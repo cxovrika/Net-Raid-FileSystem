@@ -14,7 +14,6 @@
 #include <errno.h>
 #include <sys/time.h>
 
-static char* ROOTDIR;
 #define MAX_PATH 512
 
 char REALITY_PATH[MAX_PATH] = "/home/vagrant/Net-Raid-FileSystem/Practice/Fuse_practice/xmp/reality";
@@ -426,10 +425,11 @@ static struct fuse_operations cx_oper = {
 
 int main(int argc, char *argv[])
 {
-	printf ("mounting in: %s\n", argv[argc-2]);
-	ROOTDIR = realpath(argv[argc-2], NULL);
-	printf ("REAL PATH: %s\n", ROOTDIR);
+  printf("ARGUMENTS: \n");
+  for (int i = 0; i < argc; i++) {
+    printf("%s\n", argv[i]);
+  }
+  return 0;
 
-	// umask(0);
 	return fuse_main(argc, argv, &cx_oper, NULL);
 }

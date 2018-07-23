@@ -1,0 +1,8 @@
+#ifndef SHARED_CONSTANTS_H
+#define SHARED_CONSTANTS_H
+
+int TASK_REPLACE = 1;
+int TASK_R1_STORAGE = 2;
+int TASK_R5_STORAGE = 3;
+
+#endif
