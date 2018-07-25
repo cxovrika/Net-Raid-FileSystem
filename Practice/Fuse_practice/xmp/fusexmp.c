@@ -279,7 +279,6 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 	if (res == -1)
 		return -errno;
 
-	close(res);
 	return 0;
 }
 
@@ -309,7 +308,7 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 static int cx_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
-	printf("called WRITE, path: %s\n", path);
+	printf("called WRITE, path: %s, size: %d, offset: %d\n", path, (int)size, (int)offset);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
 	// printf("path: %s , mpath: %s\n", path, mpath);
@@ -426,6 +425,11 @@ static struct fuse_operations cx_oper = {
 
 int main(int argc, char *argv[])
 {
+	printf("PARAMETERS:\n");
+	int i;
+	for (i = 0; i < argc; i++)
+		printf("%s\n", argv[i]);
+
 	printf ("mounting in: %s\n", argv[argc-2]);
 	ROOTDIR = realpath(argv[argc-2], NULL);
 	printf ("REAL PATH: %s\n", ROOTDIR);

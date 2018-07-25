@@ -1,5 +1,6 @@
 #ifndef SHARED_TYPES_H
 #define SHARED_TYPES_H
+#include "shared_constants.h"
 
 struct initial_task {
   int task_type;
@@ -18,5 +19,19 @@ struct storage_info {
   struct server_and_port servers[32];
   struct server_and_port hotswap;
 };
+
+struct task_R1 {
+  char comment[64];
+  int task_type;
+  char path[MAX_PATH];
+  char buf[MAX_BUF];
+  int size;
+  int offset;
+  int mask;
+  mode_t mode;
+  dev_t rdev;
+};
+
+
 
 #endif

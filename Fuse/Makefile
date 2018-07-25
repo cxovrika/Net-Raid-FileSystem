@@ -1,5 +1,11 @@
-server:
+MOUNTPOINT1 = ./mountpoint1
+
+server1:
 	./net_raid_server 127.0.0.1 10001 /path/to/storage_dir1
+
+server2:
+		./net_raid_server 127.0.0.1 10002 /path/to/storage_dir2
+
 
 client:
 	./net_raid_client ./configurations
@@ -13,3 +19,4 @@ clean:
 	rm net_raid_server -f
 	rm net_raid_client -f
 	rm fusecxR1 -f
+	fusermount -u $(MOUNTPOINT1)

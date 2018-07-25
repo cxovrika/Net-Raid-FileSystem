@@ -19,7 +19,6 @@
 
 #include "tools.c"
 
-char path_to_fuse_R1[256] = "./fusecxR1";
 
 void parse_and_fill_parameters(int argc, char* argv[]) {
   strcpy(path_to_config, argv[1]);
@@ -33,8 +32,6 @@ void run_new_storage(int x) {
   char** parameters = malloc(argc * sizeof(char*));
   parameters[0] = malloc(256);
   strcpy(parameters[0], si.mountpoint);
-
-  printf("parameter 0: %s\n", parameters[0]);
 
   for (int i = 0; i < si.server_count; i++) {
     //server
@@ -69,7 +66,7 @@ int main(int argc, char* argv[])
 
     get_configurations(config_fd);
 
-    for (int i = 0; i < storage_count; i++) {
+    for (int i = 0; i < 1/*storage_count*/; i++) {
       switch(fork()) {
         case -1:
           exit(100);
@@ -85,31 +82,6 @@ int main(int argc, char* argv[])
 
     }
 
-    while (1){}
+    while(1){}
     return 0;
-
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
-
-    inet_pton(AF_INET, "127.0.0.1", &server_ip);
-
-    server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(PORT);
-    server_address.sin_addr.s_addr = server_ip;
-
-    connect(server_socket, (struct sockaddr *) &server_address, sizeof(server_address));
-
-    struct initial_task it;
-    it.task_type = 2;
-    send(server_socket, &it, sizeof(it), MSG_NOSIGNAL);
-
-    while (1) {
-      scanf("%s", message);
-      // int retval = getsockopt (server_socket, SOL_SOCKET, SO_ERROR, NULL, NULL);
-      // printf("retval : %d\n", retval);
-      int result = send(server_socket, message, sizeof(message), MSG_NOSIGNAL);
-
-      printf("result of sending: %d\n", result);
-    }
-
-    close(server_socket);
 }

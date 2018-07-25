@@ -13,10 +13,22 @@
 #include <dirent.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h> /* superset of previous */
+#include <unistd.h>
+#include <arpa/inet.h>
 
-#define MAX_PATH 512
+#include "shared_types.h"
+#include "shared_constants.h"
 
-char REALITY_PATH[MAX_PATH] = "/home/vagrant/Net-Raid-FileSystem/Practice/Fuse_practice/xmp/reality";
+
+int server_count;
+int server_sockets[32];
+struct server_and_port servers[32];
+struct server_and_port hotswap;
 
 //CX
 static void get_reality_path(const char* path, char rpath[MAX_PATH]) {
@@ -25,8 +37,28 @@ static void get_reality_path(const char* path, char rpath[MAX_PATH]) {
 	strcat(rpath, path);
 }
 
+static struct task_R1 generate_task_R1(char* comment, int task_type, const char* path, const char* buf,
+	 																		int size, int offset, int mask, mode_t mode, dev_t rdev) {
+	struct task_R1 task;
+	strcpy(task.comment, comment);
+	task.task_type = task_type;
+	if (path != NULL) strcpy(task.path, path);
+	if (buf != NULL) strcpy(task.buf, buf);
+	task.size = size;
+	task.offset = offset;
+	task.mask = mask;
+	task.mode = mode;
+	task.rdev = rdev;
+	return task;
+}
+
+
 static int cx_getattr(const char *path, struct stat *stbuf)
 {
+	struct task_R1 task = generate_task_R1("getattr", TASK_GETATTR, path, NULL, 0, 0, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called GETATTR, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -42,6 +74,10 @@ static int cx_getattr(const char *path, struct stat *stbuf)
 
 static int cx_access(const char *path, int mask)
 {
+	struct task_R1 task = generate_task_R1("access", TASK_ACCESS, path, NULL, 0, 0, mask, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called ACCESS, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -57,6 +93,10 @@ static int cx_access(const char *path, int mask)
 
 static int cx_readlink(const char *path, char *buf, size_t size)
 {
+	struct task_R1 task = generate_task_R1("readlink", TASK_READLINK, path, buf, size, 0, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called READLINK, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -75,6 +115,10 @@ static int cx_readlink(const char *path, char *buf, size_t size)
 static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
+	struct task_R1 task = generate_task_R1("readdir", TASK_READDIR, path, buf, 0, offset, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called READDIR, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -105,6 +149,10 @@ static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 {
+	struct task_R1 task = generate_task_R1("mknod", TASK_MKNOD, path, NULL, 0, 0, 0, mode, rdev);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called MKNOD, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -120,6 +168,10 @@ static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int cx_mkdir(const char *path, mode_t mode)
 {
+	struct task_R1 task = generate_task_R1("mkdir", TASK_MKDIR, path, NULL, 0, 0, 0, mode, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called MKDIR, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -135,6 +187,10 @@ static int cx_mkdir(const char *path, mode_t mode)
 
 static int cx_unlink(const char *path)
 {
+	struct task_R1 task = generate_task_R1("unlink", TASK_UNLINK, path, NULL, 0, 0, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called UNLINK, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -150,6 +206,10 @@ static int cx_unlink(const char *path)
 
 static int cx_rmdir(const char *path)
 {
+	struct task_R1 task = generate_task_R1("rmdir", TASK_RMDIR, path, NULL, 0, 0, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called RMDIR, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -162,7 +222,7 @@ static int cx_rmdir(const char *path)
 
 	return 0;
 }
-
+/*
 static int cx_symlink(const char *from, const char *to)
 {
 	printf("called SYMLINK\n");
@@ -198,9 +258,14 @@ static int cx_link(const char *from, const char *to)
 
 	return 0;
 }
+*/
 
 static int cx_chmod(const char *path, mode_t mode)
 {
+	struct task_R1 task = generate_task_R1("chmod", TASK_CHMOD, path, NULL, 0, 0, 0, mode, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called CHMOD, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -215,6 +280,7 @@ static int cx_chmod(const char *path, mode_t mode)
 	return 0;
 }
 
+/*
 static int cx_chown(const char *path, uid_t uid, gid_t gid)
 {
 	printf("called CHOWN, path: %s\n", path);
@@ -229,9 +295,14 @@ static int cx_chown(const char *path, uid_t uid, gid_t gid)
 
 	return 0;
 }
+*/
 
 static int cx_truncate(const char *path, off_t size)
 {
+	struct task_R1 task = generate_task_R1("truncate", TASK_TRUNCATE, path, NULL, size, 0, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called TRUNCATE, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -248,6 +319,7 @@ static int cx_truncate(const char *path, off_t size)
 static int cx_utimens(const char *path, const struct timespec ts[2])
 {
 	printf("called UTIMENS, path: %s\n", path);
+	return 0; //for now :V
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
 	// printf("path: %s , mpath: %s\n", path, mpath);
@@ -266,8 +338,13 @@ static int cx_utimens(const char *path, const struct timespec ts[2])
 	return 0;
 }
 
+
 static int cx_open(const char *path, struct fuse_file_info *fi)
 {
+	struct task_R1 task = generate_task_R1("open", TASK_OPEN, path, NULL, 0, 0, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called OPEN, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -285,6 +362,10 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 		    struct fuse_file_info *fi)
 {
+	struct task_R1 task = generate_task_R1("read", TASK_READ, path, buf, size, offset, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called READ, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -308,6 +389,10 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 static int cx_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
+	struct task_R1 task = generate_task_R1("write", TASK_WRITE, path, buf, size, offset, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called WRITE, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -328,6 +413,7 @@ static int cx_write(const char *path, const char *buf, size_t size,
 	return res;
 }
 
+/*
 static int cx_statfs(const char *path, struct statvfs *stbuf)
 {
 	printf("called STATFS, path: %s\n", path);
@@ -342,9 +428,13 @@ static int cx_statfs(const char *path, struct statvfs *stbuf)
 
 	return 0;
 }
-
+*/
 static int cx_release(const char *path, struct fuse_file_info *fi)
 {
+	struct task_R1 task = generate_task_R1("release", TASK_RELEASE, path, NULL, 0, 0, 0, 0, 0);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called RELEASE, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
@@ -357,6 +447,7 @@ static int cx_release(const char *path, struct fuse_file_info *fi)
 	return 0;
 }
 
+/*
 static int cx_fsync(const char *path, int isdatasync,
 		     struct fuse_file_info *fi)
 {
@@ -364,15 +455,15 @@ static int cx_fsync(const char *path, int isdatasync,
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
 	// printf("path: %s , mpath: %s\n", path, mpath);
-	/* Just a stub.	 This method is optional and can safely be left
-	   unimplemented */
 
 	(void) path;
 	(void) isdatasync;
 	(void) fi;
 	return 0;
 }
+*/
 
+/*
 static int
 cx_lock(const char *path, struct fuse_file_info *fi,
 	 int cmd, struct flock *lock)
@@ -396,7 +487,7 @@ cx_lock(const char *path, struct fuse_file_info *fi,
 		return -errno;
 
 	return 0;
-}
+}*/
 
 static struct fuse_operations cx_oper = {
 	.getattr	= cx_getattr,
@@ -405,31 +496,63 @@ static struct fuse_operations cx_oper = {
 	.readdir	= cx_readdir,
 	.mknod		= cx_mknod,
 	.mkdir		= cx_mkdir,
-	.symlink	= cx_symlink,
+	//.symlink	= cx_symlink,
 	.unlink		= cx_unlink,
 	.rmdir		= cx_rmdir,
-	.rename		= cx_rename,
-	.link		= cx_link,
+	// .rename		= cx_rename,
+	// .link		= cx_link,
 	.chmod		= cx_chmod,
-	.chown		= cx_chown,
+	// .chown		= cx_chown,
 	.truncate	= cx_truncate,
 	.utimens	= cx_utimens,
 	.open		= cx_open,
 	.read		= cx_read,
 	.write		= cx_write,
-	.statfs		= cx_statfs,
+	// .statfs		= cx_statfs,
 	.release	= cx_release,
-	.fsync		= cx_fsync,
-	.lock		= cx_lock,
+	// .fsync		= cx_fsync,
+	// .lock	= cx_lock,
 };
+
+void parse_server_data(int argc, char *argv[]) {
+	server_count = argc/2 - 1;
+
+	for (int i = 0; i < server_count; i++) {
+		strcpy(servers[i].server, argv[2*i + 1]);
+		servers[i].port = atoi(argv[2*i + 2]);
+	}
+	strcpy(hotswap.server, argv[2*server_count + 1]);
+	hotswap.port = atoi(argv[2*server_count + 2]);
+}
+
+void get_server_connections() {
+	for (int i = 0; i < server_count; i++) {
+		server_sockets[i] = socket(AF_INET, SOCK_STREAM, 0);
+
+		int server_ip;
+		inet_pton(AF_INET, servers[i].server, &server_ip);
+
+		struct sockaddr_in server_address;
+		server_address.sin_family = AF_INET;
+		server_address.sin_port = htons(servers[i].port);
+		server_address.sin_addr.s_addr = server_ip;
+
+		connect(server_sockets[i], (struct sockaddr *) &server_address, sizeof(server_address));
+		struct initial_task it;
+		it.task_type = 2;
+		send(server_sockets[i], &it, sizeof(it), MSG_NOSIGNAL);
+
+	}
+}
+
 
 int main(int argc, char *argv[])
 {
-  printf("ARGUMENTS: \n");
-  for (int i = 0; i < argc; i++) {
-    printf("%s\n", argv[i]);
-  }
-  return 0;
+	parse_server_data(argc, argv);
+	get_server_connections();
 
-	return fuse_main(argc, argv, &cx_oper, NULL);
+	argv[2] = NULL;
+	argv[1] = argv[0];
+	argv[0] = path_to_fuse_R1; //pure magic here :V
+	return fuse_main(2, argv, &cx_oper, NULL);
 }

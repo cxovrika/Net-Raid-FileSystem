@@ -16,7 +16,7 @@ int main() {
   // server address definitoin
   struct sockaddr_in server_address;
   server_address.sin_family = AF_INET;
-  server_address.sin_port = htons(9002); //ITS OVER 9000 AGAIN!!!!
+  server_address.sin_port = htons(9011); //ITS OVER 9000 AGAIN!!!!
   server_address.sin_addr.s_addr = INADDR_ANY;
 
   // bind sockdt to specified IP and port
@@ -27,8 +27,11 @@ int main() {
   int client_socket;
   client_socket = accept(server_socket, NULL, NULL);
 
+  read(client_socket, &server_message, sizeof(server_message) );
+  printf("recieved: %s\n", server_message);
+
   // sending message
-  send(client_socket, server_message, sizeof(server_message), 0);
+  // send(client_socket, server_message, sizeof(server_message), 0);
 
   // closing connection
   close(server_socket);

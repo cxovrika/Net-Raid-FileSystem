@@ -18,6 +18,10 @@ void bring_server_up() {
   // server socket creation
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
+  //xz
+  int optval = 1;
+  setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int));
+
   // server address definitoin
   server_address.sin_family = AF_INET;
   server_address.sin_port = htons(PORT);
@@ -36,6 +40,17 @@ void parse_and_fill_parameters(int argc, char* argv[]) {
   // printf("ip: %s\nport: %d\npath: %s\n", client_ip, PORT, path_to_storage \);
 }
 
+void serve_client_for_R1() {
+  struct task_R1 task;
+  while (1) {
+    int bytes_read = recv(client_socket, &task, sizeof(task), 0);
+    if (bytes_read == 0) break;
+    printf("bytes read: %d\n", bytes_read);
+    printf("got the comment of task: %s\n", task.comment);
+  }
+}
+
+
 void accept_and_serve_clienet() {
   printf("Accepting client...\n");
   // accepting client
@@ -47,8 +62,13 @@ void accept_and_serve_clienet() {
 
   printf("initial_task: %d\n", it.task_type);
 
-  // closing connection
-  close(server_socket);
+  if (it.task_type == TASK_R1_STORAGE) {
+    serve_client_for_R1();
+  } else {
+    // closing connection
+    close(server_socket);
+  }
+
 }
 
 int main(int argc, char* argv[]) {

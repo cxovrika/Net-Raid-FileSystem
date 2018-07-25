@@ -9,6 +9,8 @@
 
 int main() {
 
+  char server_response[256];
+
   // socket creation
   int network_socket;
   network_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -16,7 +18,7 @@ int main() {
   // address creation for socket (where to connect)
   struct sockaddr_in server_address;
   server_address.sin_family = AF_INET;
-  server_address.sin_port = htons(9002); //ITS OVER 9000!!!!
+  server_address.sin_port = htons(9011); //ITS OVER 9000!!!!
   server_address.sin_addr.s_addr = INADDR_ANY;
 
   int connection_status = connect(network_socket, (struct sockaddr *) &server_address, sizeof(server_address));
@@ -28,11 +30,12 @@ int main() {
     else
   {
     // receiving information and printing
-    char server_response[256];
-    recv(network_socket, &server_response, sizeof(server_response), 0);
-    printf("server response: %s\n", server_response);
+    strcpy(server_response, "some dummy");
+    // recv(network_socket, &server_response, sizeof(server_response), 0);
+    // send(network_socket, &server_response, sizeof(server_response), 0);
+    // printf("server response: %s\n", server_response);
   }
-
+  // while(1){}
   // closing socket
   close(network_socket);
 

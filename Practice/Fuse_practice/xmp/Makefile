@@ -5,7 +5,7 @@ compile:
 
 mount:
 	mkdir $(MOUNTPOINT)
-	./fusexmp $(MOUNTPOINT) -f
+		./fusexmp $(MOUNTPOINT) -f
 
 clean:
 	fusermount -u $(MOUNTPOINT)

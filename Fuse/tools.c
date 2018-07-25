@@ -128,5 +128,20 @@ void get_configurations(int config_fd) {
   fill_storage_data(config_fd);
 }
 
+void read_from_socket(int socket, char* buf, size_t len, int flags) {
+
+  char ch;
+  while (len > 0)
+  {
+      int ret = recv(socket, &ch, 1, flags);
+      if (ret > 0)
+      {
+          *buf = ch;
+          ++buf;
+          len--;
+      }
+  }
+
+}
 
 #endif

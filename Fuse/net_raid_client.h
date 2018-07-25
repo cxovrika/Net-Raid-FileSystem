@@ -7,9 +7,6 @@
 char path_to_config[256];
 int config_fd;
 
-int server_socket, server_ip, PORT = 10001;
-struct sockaddr_in server_address;
-char message[256];
 
 int storage_count;
 struct storage_info storages[128];
