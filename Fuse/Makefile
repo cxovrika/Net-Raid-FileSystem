@@ -1,7 +1,7 @@
 MOUNTPOINT1 = ./mountpoint1
 
 server1:
-	./net_raid_server 127.0.0.1 10001 /path/to/storage_dir1
+	./net_raid_server 127.0.0.1 10001 ./serverside1
 
 server2:
 		./net_raid_server 127.0.0.1 10002 /path/to/storage_dir2

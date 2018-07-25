@@ -39,6 +39,7 @@ struct server_response_R1 {
   char comment[30];
   int ret_val;
   struct stat stbuf;
+  char buf[8192];
 };
 
 

@@ -43,7 +43,7 @@ static struct task_R1 generate_task_R1(char* comment, int task_type, const char*
 	strcpy(task.comment, comment);
 	task.task_type = task_type;
 	if (path != NULL) strcpy(task.path, path);
-	if (buf != NULL) strcpy(task.buf, buf);
+	if (buf != NULL && task_type == TASK_WRITE) memcpy(task.buf, buf, size);
 	task.size = size;
 	task.offset = offset;
 	task.mask = mask;
@@ -438,10 +438,6 @@ static int cx_statfs(const char *path, struct statvfs *stbuf)
 */
 static int cx_release(const char *path, struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("release", TASK_RELEASE, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
-	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
-	(void)(data_sent);
-
 	printf("called RELEASE, path: %s\n", path);
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
