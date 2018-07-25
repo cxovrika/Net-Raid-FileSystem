@@ -1,6 +1,7 @@
 #ifndef SHARED_TYPES_H
 #define SHARED_TYPES_H
 #include "shared_constants.h"
+#include <sys/stat.h>
 
 struct initial_task {
   int task_type;
@@ -30,8 +31,15 @@ struct task_R1 {
   int mask;
   mode_t mode;
   dev_t rdev;
+  char from[MAX_PATH];
+  char to[MAX_PATH];
 };
 
+struct server_response_R1 {
+  char comment[30];
+  int ret_val;
+  struct stat stbuf;
+};
 
 
 #endif

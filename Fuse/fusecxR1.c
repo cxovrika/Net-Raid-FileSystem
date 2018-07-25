@@ -38,7 +38,7 @@ static void get_reality_path(const char* path, char rpath[MAX_PATH]) {
 }
 
 static struct task_R1 generate_task_R1(char* comment, int task_type, const char* path, const char* buf,
-	 																		int size, int offset, int mask, mode_t mode, dev_t rdev) {
+	 																		int size, int offset, int mask, mode_t mode, dev_t rdev, const char* from, const char* to) {
 	struct task_R1 task;
 	strcpy(task.comment, comment);
 	task.task_type = task_type;
@@ -49,13 +49,15 @@ static struct task_R1 generate_task_R1(char* comment, int task_type, const char*
 	task.mask = mask;
 	task.mode = mode;
 	task.rdev = rdev;
+	if (from != NULL) strcpy(task.from, from);
+	if (to != NULL) strcpy(task.to, to);
 	return task;
 }
 
 
 static int cx_getattr(const char *path, struct stat *stbuf)
 {
-	struct task_R1 task = generate_task_R1("getattr", TASK_GETATTR, path, NULL, 0, 0, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("getattr", TASK_GETATTR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -74,7 +76,7 @@ static int cx_getattr(const char *path, struct stat *stbuf)
 
 static int cx_access(const char *path, int mask)
 {
-	struct task_R1 task = generate_task_R1("access", TASK_ACCESS, path, NULL, 0, 0, mask, 0, 0);
+	struct task_R1 task = generate_task_R1("access", TASK_ACCESS, path, NULL, 0, 0, mask, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -93,7 +95,7 @@ static int cx_access(const char *path, int mask)
 
 static int cx_readlink(const char *path, char *buf, size_t size)
 {
-	struct task_R1 task = generate_task_R1("readlink", TASK_READLINK, path, buf, size, 0, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("readlink", TASK_READLINK, path, buf, size, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -115,7 +117,7 @@ static int cx_readlink(const char *path, char *buf, size_t size)
 static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("readdir", TASK_READDIR, path, buf, 0, offset, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("readdir", TASK_READDIR, path, buf, 0, offset, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -149,7 +151,7 @@ static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 {
-	struct task_R1 task = generate_task_R1("mknod", TASK_MKNOD, path, NULL, 0, 0, 0, mode, rdev);
+	struct task_R1 task = generate_task_R1("mknod", TASK_MKNOD, path, NULL, 0, 0, 0, mode, rdev, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -168,7 +170,7 @@ static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int cx_mkdir(const char *path, mode_t mode)
 {
-	struct task_R1 task = generate_task_R1("mkdir", TASK_MKDIR, path, NULL, 0, 0, 0, mode, 0);
+	struct task_R1 task = generate_task_R1("mkdir", TASK_MKDIR, path, NULL, 0, 0, 0, mode, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -187,7 +189,7 @@ static int cx_mkdir(const char *path, mode_t mode)
 
 static int cx_unlink(const char *path)
 {
-	struct task_R1 task = generate_task_R1("unlink", TASK_UNLINK, path, NULL, 0, 0, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("unlink", TASK_UNLINK, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -206,7 +208,7 @@ static int cx_unlink(const char *path)
 
 static int cx_rmdir(const char *path)
 {
-	struct task_R1 task = generate_task_R1("rmdir", TASK_RMDIR, path, NULL, 0, 0, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("rmdir", TASK_RMDIR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -233,10 +235,14 @@ static int cx_symlink(const char *from, const char *to)
 		return -errno;
 
 	return 0;
-}
+}*/
 
 static int cx_rename(const char *from, const char *to)
 {
+	struct task_R1 task = generate_task_R1("rename", TASK_RENAME, NULL, NULL, 0, 0, 0, 0, 0, from, to);
+	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
+	(void)(data_sent);
+
 	printf("called RENAME\n");
 	int res;
 
@@ -247,6 +253,7 @@ static int cx_rename(const char *from, const char *to)
 	return 0;
 }
 
+/*
 static int cx_link(const char *from, const char *to)
 {
 	printf("called LINK\n");
@@ -262,7 +269,7 @@ static int cx_link(const char *from, const char *to)
 
 static int cx_chmod(const char *path, mode_t mode)
 {
-	struct task_R1 task = generate_task_R1("chmod", TASK_CHMOD, path, NULL, 0, 0, 0, mode, 0);
+	struct task_R1 task = generate_task_R1("chmod", TASK_CHMOD, path, NULL, 0, 0, 0, mode, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -299,7 +306,7 @@ static int cx_chown(const char *path, uid_t uid, gid_t gid)
 
 static int cx_truncate(const char *path, off_t size)
 {
-	struct task_R1 task = generate_task_R1("truncate", TASK_TRUNCATE, path, NULL, size, 0, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("truncate", TASK_TRUNCATE, path, NULL, size, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -341,7 +348,7 @@ static int cx_utimens(const char *path, const struct timespec ts[2])
 
 static int cx_open(const char *path, struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("open", TASK_OPEN, path, NULL, 0, 0, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("open", TASK_OPEN, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -362,7 +369,7 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 		    struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("read", TASK_READ, path, buf, size, offset, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("read", TASK_READ, path, buf, size, offset, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -389,7 +396,7 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 static int cx_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("write", TASK_WRITE, path, buf, size, offset, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("write", TASK_WRITE, path, buf, size, offset, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -431,7 +438,7 @@ static int cx_statfs(const char *path, struct statvfs *stbuf)
 */
 static int cx_release(const char *path, struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("release", TASK_RELEASE, path, NULL, 0, 0, 0, 0, 0);
+	struct task_R1 task = generate_task_R1("release", TASK_RELEASE, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 
@@ -489,17 +496,30 @@ cx_lock(const char *path, struct fuse_file_info *fi,
 	return 0;
 }*/
 
+int cx_releasedir(const char* path, struct fuse_file_info *fi){
+	return 0;
+}
+
+int cx_opendir(const char* path, struct fuse_file_info *fi){
+	return 0;
+}
+
+
+
+
 static struct fuse_operations cx_oper = {
+	.opendir = cx_opendir,
+	.releasedir = cx_releasedir,
 	.getattr	= cx_getattr,
 	.access		= cx_access,
 	.readlink	= cx_readlink,
 	.readdir	= cx_readdir,
 	.mknod		= cx_mknod,
 	.mkdir		= cx_mkdir,
-	//.symlink	= cx_symlink,
+	// .symlink	= cx_symlink,
 	.unlink		= cx_unlink,
 	.rmdir		= cx_rmdir,
-	// .rename		= cx_rename,
+	.rename		= cx_rename,
 	// .link		= cx_link,
 	.chmod		= cx_chmod,
 	// .chown		= cx_chown,
@@ -541,7 +561,6 @@ void get_server_connections() {
 		struct initial_task it;
 		it.task_type = 2;
 		send(server_sockets[i], &it, sizeof(it), MSG_NOSIGNAL);
-
 	}
 }
 

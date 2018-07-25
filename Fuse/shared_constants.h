@@ -19,6 +19,7 @@ int TASK_READ = 14;
 int TASK_WRITE = 15;
 int TASK_RELEASE = 16;
 int TASK_MKDIR = 17;
+int TASK_RENAME = 18;
 
 
 

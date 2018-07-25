@@ -12,6 +12,7 @@
 
 #include "tools.c"
 
+#include "task_handling_R1.c"
 
 void bring_server_up() {
   printf("Bringing server up...\n");
@@ -45,8 +46,7 @@ void serve_client_for_R1() {
   while (1) {
     int bytes_read = recv(client_socket, &task, sizeof(task), 0);
     if (bytes_read == 0) break;
-    printf("bytes read: %d\n", bytes_read);
-    printf("got the comment of task: %s\n", task.comment);
+    handle_task_R1(task);
   }
 }
 
