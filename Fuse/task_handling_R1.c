@@ -22,7 +22,7 @@ handle_getattr(struct task_R1 task) {
 
     int res = lstat(rpath, &resp.stbuf);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
 
     return resp;
 }
@@ -35,7 +35,7 @@ handle_access(struct task_R1 task) {
 
     int res = access(rpath, task.mask);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
 
     return resp;
 }
@@ -48,7 +48,7 @@ handle_readlink(struct task_R1 task) {
 
     int res = readlink(rpath, resp.buf, task.size - 1);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
 
     if (res != -1)
       resp.buf[res] = '\0';
@@ -82,6 +82,7 @@ handle_readdir(struct task_R1 task) {
 		}
 
 		resp.files_in_dir = files_in_dir;
+		resp.ret_val = 0;
 		closedir(dp);
 
     return resp;
@@ -95,7 +96,7 @@ handle_mknod(struct task_R1 task) {
 
     int res = mknod(rpath, task.mode, task.rdev);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
 
     return resp;
 }
@@ -108,7 +109,7 @@ handle_mkdir(struct task_R1 task) {
 
     int res = mkdir(rpath, task.mode);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
 
     return resp;
 }
@@ -121,7 +122,7 @@ handle_unlink(struct task_R1 task) {
 
     int res = unlink(rpath);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
 
     return resp;
 }
@@ -134,7 +135,7 @@ handle_rmdir(struct task_R1 task) {
 
     int res = rmdir(rpath);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
     return resp;
 }
 
@@ -146,7 +147,7 @@ handle_rename(struct task_R1 task) {
 
     int res = rename(task.from, task.to);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
     return resp;
 }
 
@@ -158,7 +159,7 @@ handle_chmod(struct task_R1 task) {
 
     int res = chmod(rpath, task.mode);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
     return resp;
 }
 
@@ -168,9 +169,9 @@ handle_truncate(struct task_R1 task) {
     char rpath[MAX_PATH];
     get_server_reality_path(task.path, rpath);
 
-    int res = mkdir(rpath, task.size);
+    int res = truncate(rpath, task.size);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res;
+                   resp.ret_val = 0;
     return resp;
 }
 
@@ -188,9 +189,9 @@ handle_open(struct task_R1 task) {
     char rpath[MAX_PATH];
     get_server_reality_path(task.path, rpath);
 
-    int res = mkdir(rpath, task.mode);
+    int res = open(rpath, task.flags);
     if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = res, close(res);
+                   resp.ret_val = 0, close(res);
 
     return resp;
 }

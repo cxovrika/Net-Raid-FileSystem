@@ -38,7 +38,7 @@ static void get_reality_path(const char* path, char rpath[MAX_PATH]) {
 }
 
 static struct task_R1 generate_task_R1(char* comment, int task_type, const char* path, const char* buf,
-	 																		int size, int offset, int mask, mode_t mode, dev_t rdev, const char* from, const char* to) {
+	 																		int size, int offset, int mask, mode_t mode, dev_t rdev, const char* from, const char* to, int flags) {
 	struct task_R1 task;
 	strcpy(task.comment, comment);
 	task.task_type = task_type;
@@ -51,194 +51,135 @@ static struct task_R1 generate_task_R1(char* comment, int task_type, const char*
 	task.rdev = rdev;
 	if (from != NULL) strcpy(task.from, from);
 	if (to != NULL) strcpy(task.to, to);
+	task.flags = flags;
 	return task;
 }
 
 
 static int cx_getattr(const char *path, struct stat *stbuf)
 {
-	struct task_R1 task = generate_task_R1("getattr", TASK_GETATTR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("getattr", TASK_GETATTR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called GETATTR, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
 
-	int res;
-	res = lstat(rpath, stbuf);
-	if (res == -1)
-		return -errno;
+	if (resp.ret_val == 0) {
+		memcpy(stbuf, &resp.stbuf, sizeof(struct stat));
+	}
 
-	return 0;
+	return resp.ret_val;
 }
 
 static int cx_access(const char *path, int mask)
 {
-	struct task_R1 task = generate_task_R1("access", TASK_ACCESS, path, NULL, 0, 0, mask, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("access", TASK_ACCESS, path, NULL, 0, 0, mask, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called ACCESS, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int res;
 
-	res = access(rpath, mask);
-	if (res == -1)
-		return -errno;
-
-	return 0;
+	return resp.ret_val;
 }
 
 static int cx_readlink(const char *path, char *buf, size_t size)
 {
-	struct task_R1 task = generate_task_R1("readlink", TASK_READLINK, path, buf, size, 0, 0, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("readlink", TASK_READLINK, path, buf, size, 0, 0, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called READLINK, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int res;
 
-	res = readlink(rpath, buf, size - 1);
-	if (res == -1)
-		return -errno;
+	if (resp.ret_val == 0) {
+		memcpy(buf, resp.buf, size);
+	}
 
-	buf[res] = '\0';
-	return 0;
+	return resp.ret_val;
 }
 
 
 static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("readdir", TASK_READDIR, path, buf, 0, offset, 0, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("readdir", TASK_READDIR, path, buf, 0, offset, 0, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called READDIR, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
 
-	DIR *dp;
-	struct dirent *de;
-
-	(void) offset;
-	(void) fi;
-
-	dp = opendir(rpath);
-	if (dp == NULL)
-		return -errno;
-
-	while ((de = readdir(dp)) != NULL) {
-		struct stat st;
-		memset(&st, 0, sizeof(st));
-		st.st_ino = de->d_ino;
-		st.st_mode = de->d_type << 12;
-		if (filler(buf, de->d_name, &st, 0))
-			break;
+	for (int i = 0; i < resp.files_in_dir; i++) {
+		filler(buf, resp.file_names[i], &resp.stats[i], 0);
 	}
+	// while ((de = readdir(dp)) != NULL) {
+	// 	struct stat st;
+	// 	memset(&st, 0, sizeof(st));
+	// 	st.st_ino = de->d_ino;
+	// 	st.st_mode = de->d_type << 12;
+	// 	if (filler(buf, de->d_name, &st, 0))
+	// 		break;
+	// }
 
-	closedir(dp);
-	return 0;
+	return resp.ret_val;
 }
 
 static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 {
-	struct task_R1 task = generate_task_R1("mknod", TASK_MKNOD, path, NULL, 0, 0, 0, mode, rdev, NULL, NULL);
+	struct task_R1 task = generate_task_R1("mknod", TASK_MKNOD, path, NULL, 0, 0, 0, mode, rdev, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called MKNOD, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int res;
 
-	res = mknod(rpath, mode, rdev);
-	if (res == -1)
-		return -errno;
-
-	return 0;
+	return resp.ret_val;
 }
 
 static int cx_mkdir(const char *path, mode_t mode)
 {
-	struct task_R1 task = generate_task_R1("mkdir", TASK_MKDIR, path, NULL, 0, 0, 0, mode, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("mkdir", TASK_MKDIR, path, NULL, 0, 0, 0, mode, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called MKDIR, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int res;
 
-	res = mkdir(rpath, mode);
-	if (res == -1)
-		return -errno;
-
-	return 0;
+	return resp.ret_val;
 }
 
 static int cx_unlink(const char *path)
 {
-	struct task_R1 task = generate_task_R1("unlink", TASK_UNLINK, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("unlink", TASK_UNLINK, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called UNLINK, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int res;
 
-	res = unlink(rpath);
-	if (res == -1)
-		return -errno;
-
-	return 0;
+	return resp.ret_val;
 }
 
 static int cx_rmdir(const char *path)
 {
-	struct task_R1 task = generate_task_R1("rmdir", TASK_RMDIR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("rmdir", TASK_RMDIR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called RMDIR, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int res;
 
-	res = rmdir(rpath);
-	if (res == -1)
-		return -errno;
-
-	return 0;
+	return resp.ret_val;
 }
 /*
 static int cx_symlink(const char *from, const char *to)
@@ -255,20 +196,15 @@ static int cx_symlink(const char *from, const char *to)
 
 static int cx_rename(const char *from, const char *to)
 {
-	struct task_R1 task = generate_task_R1("rename", TASK_RENAME, NULL, NULL, 0, 0, 0, 0, 0, from, to);
+	struct task_R1 task = generate_task_R1("rename", TASK_RENAME, NULL, NULL, 0, 0, 0, 0, 0, from, to, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called RENAME\n");
-	int res;
 
-	res = rename(from, to);
-	if (res == -1)
-		return -errno;
-
-	return 0;
+	return resp.ret_val;
 }
 
 /*
@@ -287,24 +223,15 @@ static int cx_link(const char *from, const char *to)
 
 static int cx_chmod(const char *path, mode_t mode)
 {
-	struct task_R1 task = generate_task_R1("chmod", TASK_CHMOD, path, NULL, 0, 0, 0, mode, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("chmod", TASK_CHMOD, path, NULL, 0, 0, 0, mode, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called CHMOD, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
 
-	int res;
-
-	res = chmod(rpath, mode);
-	if (res == -1)
-		return -errno;
-
-	return 0;
+	return resp.ret_val;
 }
 
 /*
@@ -326,23 +253,15 @@ static int cx_chown(const char *path, uid_t uid, gid_t gid)
 
 static int cx_truncate(const char *path, off_t size)
 {
-	struct task_R1 task = generate_task_R1("truncate", TASK_TRUNCATE, path, NULL, size, 0, 0, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("truncate", TASK_TRUNCATE, path, NULL, size, 0, 0, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called TRUNCATE, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int res;
 
-	res = truncate(rpath, size);
-	if (res == -1)
-		return -errno;
-
-	return 0;
+	return resp.ret_val;
 }
 
 static int cx_utimens(const char *path, const struct timespec ts[2])
@@ -370,82 +289,45 @@ static int cx_utimens(const char *path, const struct timespec ts[2])
 
 static int cx_open(const char *path, struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("open", TASK_OPEN, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("open", TASK_OPEN, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called OPEN, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int res;
 
-	res = open(rpath, fi->flags);
-	if (res == -1)
-		return -errno;
-
-	close(res);
-	return 0;
+	return resp.ret_val;
 }
 
 static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 		    struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("read", TASK_READ, path, buf, size, offset, 0, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("read", TASK_READ, path, buf, size, offset, 0, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called READ, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int fd;
-	int res;
 
-	(void) fi;
-	fd = open(rpath, O_RDONLY);
-	if (fd == -1)
-		return -errno;
+	memcpy(buf, resp.buf, size);
 
-	res = pread(fd, buf, size, offset);
-	if (res == -1)
-		res = -errno;
-
-	close(fd);
-	return res;
+	return resp.ret_val;
 }
 
 static int cx_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
-	struct task_R1 task = generate_task_R1("write", TASK_WRITE, path, buf, size, offset, 0, 0, 0, NULL, NULL);
+	struct task_R1 task = generate_task_R1("write", TASK_WRITE, path, buf, size, offset, 0, 0, 0, NULL, NULL, 0);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
 	struct server_response_R1 resp;
 	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called WRITE, path: %s\n", path);
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int fd;
-	int res;
 
-	(void) fi;
-	fd = open(rpath, O_WRONLY);
-	if (fd == -1)
-		return -errno;
-
-	res = pwrite(fd, buf, size, offset);
-	if (res == -1)
-		res = -errno;
-
-	close(fd);
-	return res;
+	return resp.ret_val;
 }
 
 /*
@@ -594,8 +476,14 @@ int main(int argc, char *argv[])
 	parse_server_data(argc, argv);
 	get_server_connections();
 
+	// argv[2] = NULL;
+	// argv[1] = argv[0];
+	// argv[0] = path_to_fuse_R1; //pure magic here :V
 	argv[2] = NULL;
 	argv[1] = argv[0];
 	argv[0] = path_to_fuse_R1; //pure magic here :V
-	return fuse_main(2, argv, &cx_oper, NULL);
+	argv[2] = malloc(3);
+	strcpy(argv[2], "-f");
+	argv[3] = NULL;
+	return fuse_main(3, argv, &cx_oper, NULL);
 }

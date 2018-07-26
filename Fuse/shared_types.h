@@ -33,6 +33,7 @@ struct task_R1 {
   dev_t rdev;
   char from[MAX_PATH];
   char to[MAX_PATH];
+  int flags;
 };
 
 struct server_response_R1 {
