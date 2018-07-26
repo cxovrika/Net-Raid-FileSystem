@@ -60,6 +60,8 @@ static int cx_getattr(const char *path, struct stat *stbuf)
 	struct task_R1 task = generate_task_R1("getattr", TASK_GETATTR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called GETATTR, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -79,6 +81,8 @@ static int cx_access(const char *path, int mask)
 	struct task_R1 task = generate_task_R1("access", TASK_ACCESS, path, NULL, 0, 0, mask, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called ACCESS, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -98,6 +102,8 @@ static int cx_readlink(const char *path, char *buf, size_t size)
 	struct task_R1 task = generate_task_R1("readlink", TASK_READLINK, path, buf, size, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called READLINK, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -120,6 +126,8 @@ static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	struct task_R1 task = generate_task_R1("readdir", TASK_READDIR, path, buf, 0, offset, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called READDIR, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -154,6 +162,8 @@ static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 	struct task_R1 task = generate_task_R1("mknod", TASK_MKNOD, path, NULL, 0, 0, 0, mode, rdev, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called MKNOD, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -173,6 +183,8 @@ static int cx_mkdir(const char *path, mode_t mode)
 	struct task_R1 task = generate_task_R1("mkdir", TASK_MKDIR, path, NULL, 0, 0, 0, mode, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called MKDIR, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -192,6 +204,8 @@ static int cx_unlink(const char *path)
 	struct task_R1 task = generate_task_R1("unlink", TASK_UNLINK, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called UNLINK, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -211,6 +225,8 @@ static int cx_rmdir(const char *path)
 	struct task_R1 task = generate_task_R1("rmdir", TASK_RMDIR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called RMDIR, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -242,6 +258,8 @@ static int cx_rename(const char *from, const char *to)
 	struct task_R1 task = generate_task_R1("rename", TASK_RENAME, NULL, NULL, 0, 0, 0, 0, 0, from, to);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called RENAME\n");
 	int res;
@@ -272,6 +290,8 @@ static int cx_chmod(const char *path, mode_t mode)
 	struct task_R1 task = generate_task_R1("chmod", TASK_CHMOD, path, NULL, 0, 0, 0, mode, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called CHMOD, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -309,6 +329,8 @@ static int cx_truncate(const char *path, off_t size)
 	struct task_R1 task = generate_task_R1("truncate", TASK_TRUNCATE, path, NULL, size, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called TRUNCATE, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -351,6 +373,8 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 	struct task_R1 task = generate_task_R1("open", TASK_OPEN, path, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called OPEN, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -372,6 +396,8 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 	struct task_R1 task = generate_task_R1("read", TASK_READ, path, buf, size, offset, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called READ, path: %s\n", path);
 	char rpath[MAX_PATH];
@@ -399,6 +425,8 @@ static int cx_write(const char *path, const char *buf, size_t size,
 	struct task_R1 task = generate_task_R1("write", TASK_WRITE, path, buf, size, offset, 0, 0, 0, NULL, NULL);
 	int data_sent = send(server_sockets[0], &task, sizeof(task), 0);
 	(void)(data_sent);
+	struct server_response_R1 resp;
+	recv(server_sockets[0], &resp, sizeof(resp), 0);
 
 	printf("called WRITE, path: %s\n", path);
 	char rpath[MAX_PATH];

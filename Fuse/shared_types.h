@@ -40,6 +40,9 @@ struct server_response_R1 {
   int ret_val;
   struct stat stbuf;
   char buf[8192];
+  int files_in_dir;
+  char file_names[64][32];
+  struct stat stats[32];
 };
 
 

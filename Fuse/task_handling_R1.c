@@ -2,6 +2,7 @@
 #include "shared_types.h"
 #include "shared_constants.h"
 #include <errno.h>
+#include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -55,10 +56,34 @@ handle_readlink(struct task_R1 task) {
     return resp;
 }
 
-//TODO!!!!!!!!!!!!!
 struct server_response_R1
 handle_readdir(struct task_R1 task) {
     struct server_response_R1 resp;
+		char rpath[MAX_PATH];
+    get_server_reality_path(task.path, rpath);
+
+		DIR *dp;
+		struct dirent *de;
+
+		dp = opendir(rpath);
+		if (dp == NULL) {
+			resp.ret_val = -errno;
+			return resp;
+		}
+
+		int files_in_dir = 0;
+		while ((de = readdir(dp)) != NULL) {
+			strcpy(resp.file_names[files_in_dir], de->d_name);
+			memset(&resp.stats[files_in_dir], 0, sizeof(struct stat));
+			resp.stats[files_in_dir].st_ino = de->d_ino;
+			resp.stats[files_in_dir].st_mode = de->d_type << 12;
+
+			files_in_dir++;
+		}
+
+		resp.files_in_dir = files_in_dir;
+		closedir(dp);
+
     return resp;
 }
 
@@ -228,14 +253,8 @@ handle_release(struct task_R1 task) {
 void handle_task_R1(struct task_R1 task) {
   struct server_response_R1 resp;
   printf("gonna handle: %d, %s\n", task.task_type, task.comment);
-  if (task.task_type == TASK_WRITE) {
-    printf("btw, the buffer i got looks like this (%d):\n", (int)task.size);
-    for (int i = 0; i < task.size; i++)
-      printf("%c", task.buf[i]);
 
-    printf("\n");
-  }
-  if (task.task_type == TASK_GETATTR) {
+	if (task.task_type == TASK_GETATTR) {
     resp = handle_getattr(task);
   }
 
@@ -295,5 +314,5 @@ void handle_task_R1(struct task_R1 task) {
     resp = handle_release(task);
   }
 
-
+	send(client_socket, &resp, sizeof(resp), 0);
 }
