@@ -20,16 +20,22 @@
 #include <netinet/ip.h> /* superset of previous */
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <pthread.h>
+#include <semaphore.h>
 
 #include "shared_types.h"
 #include "shared_constants.h"
 #include "md5.h"
 
+int timeout = 10; //TODO should be passed
 
 int server_count;
 int server_sockets[32], server_status[32];
 struct server_and_port servers[32];
 struct server_and_port hotswap;
+int server_unresponsiveness[32];
+
+sem_t syscall_lock;
 
 //CX
 static void get_reality_path(const char* path, char rpath[MAX_PATH]) {
@@ -385,9 +391,9 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 	if (alive_count <= 1) {
 		return resp[first_alive].ret_val;
 	}
-	printf("ret vals: %d %d\n", resp[0].ret_val, resp[1].ret_val);
-	printf("resp[0].hashes_match:%d\n",resp[0].hashes_match);
-	printf("shahes compared: %d\n", memcmp(resp[0].cur_hash, resp[1].cur_hash, 16));
+	// printf("ret vals: %d %d\n", resp[0].ret_val, resp[1].ret_val);
+	// printf("resp[0].hashes_match:%d\n",resp[0].hashes_match);
+	// printf("shahes compared: %d\n", memcmp(resp[0].cur_hash, resp[1].cur_hash, 16));
 
 	if ((resp[0].ret_val == 0 && resp[1].ret_val != 0) ||
  			(resp[0].ret_val != 0 && resp[1].ret_val == 0) ||
@@ -612,11 +618,69 @@ void get_server_connections() {
 	}
 }
 
+void* health_check(void* data_) {
+	struct task_R1 task = generate_task_R1("health", TASK_HEALTHCHECK, NULL, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
+
+	while(1) {
+		sleep(1);
+		printf("checking server healths\n");
+		sem_wait(&syscall_lock);
+		for (int i = 0; i < server_count; i++) {
+
+			if (server_status[i] == 0) {
+				int data_sent = send(server_sockets[i], &task, sizeof(task), MSG_NOSIGNAL);
+				if (data_sent == -1) {
+					printf("!!!==> could not send data to server: %d\n", i);
+					server_status[i] = -1;
+				} else {
+					printf("server %d i alive!\n", i);
+				}
+			} else {
+				server_sockets[i] = socket(AF_INET, SOCK_STREAM, 0);
+
+				int server_ip;
+				inet_pton(AF_INET, servers[i].server, &server_ip);
+
+				struct sockaddr_in server_address;
+				server_address.sin_family = AF_INET;
+				server_address.sin_port = htons(servers[i].port);
+				server_address.sin_addr.s_addr = server_ip;
+
+				int result = connect(server_sockets[i], (struct sockaddr *) &server_address, sizeof(server_address));
+				if (result == -1) {
+					server_unresponsiveness[i]++;
+					if (server_unresponsiveness[i] == timeout) {
+						printf("SERVER %d NEEDS TO BE CHANGED WITH HOTSWAP!!!!\n", i);
+					}
+					continue;
+				}
+
+				struct initial_task it;
+				it.task_type = 2;
+				send(server_sockets[i], &it, sizeof(it), MSG_NOSIGNAL);
+
+				server_status[i] = 0;
+				server_unresponsiveness[i] = 0;
+			}
+		}
+		sem_post(&syscall_lock);
+	}
+
+	return NULL;
+}
+
+void start_health_checker() {
+	sem_init(&syscall_lock, 0, 1);
+
+	pthread_t thread_id;
+	pthread_create(&thread_id, NULL, health_check, NULL);
+}
 
 int main(int argc, char *argv[])
 {
 	parse_server_data(argc, argv);
 	get_server_connections();
+	start_health_checker();
 
 	// argv[2] = NULL;
 	// argv[1] = argv[0];

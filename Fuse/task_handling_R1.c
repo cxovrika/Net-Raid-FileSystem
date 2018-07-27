@@ -200,14 +200,6 @@ handle_open(struct task_R1 task) {
 			getxattr(rpath, "user.hash", resp.old_hash, 16);
 			get_hash_from_path(rpath, resp.cur_hash);
 			resp.hashes_match = memcmp(resp.old_hash, resp.cur_hash, 16);
-			printf("old hash:\n");
-			for (int i = 0; i < 16; i++)
-			printf("%x", resp.old_hash[i]);
-			printf("\nnew hash:\n");
-			for (int i = 0; i < 16; i++)
-			printf("%x", resp.cur_hash[i]);
-			printf("\n");
-
 		}
 
     return resp;
@@ -261,11 +253,6 @@ handle_write(struct task_R1 task) {
 		unsigned char hash[16];
 		get_hash_from_path(rpath, hash);
 		setxattr(rpath, "user.hash", hash, 16, 0);
-		printf("kinda set hash to:\n");
-		for (int i = 0; i < 16; i++)
-		printf("%x", hash[i]);
-		printf("\n");
-
 
 
 		return resp;
@@ -306,14 +293,10 @@ handle_rcvfl(struct task_R1 task) {
 
 		int fsize = task.size;
 		char buf[fsize + 1];
-		printf("I HAD NO FILE, SO IM GONNA RECIEVE %d bytes now\n", fsize);
+
 		recv(client_socket, buf, fsize, 0);
 		buf[fsize] = '\0';
-		printf("GOT THE: %c%c%c\n", buf[0], buf[1], buf[2]);
 
-		// int fd = open(rpath, O_CREAT, S_IRWXU);
-		// write(fd, buf, fsize);
-		// close(fd);
 		FILE* fptr = fopen(rpath, "wb");
 		fprintf(fptr, "%s", buf);
 		fclose(fptr);
@@ -398,6 +381,10 @@ void handle_task_R1(struct task_R1 task) {
 	if (task.task_type == TASK_RCVFL) {
     resp = handle_rcvfl(task);
 		return;
+  }
+
+	if (task.task_type == TASK_HEALTHCHECK) {
+    return;
   }
 
 	send(client_socket, &resp, sizeof(resp), 0);
