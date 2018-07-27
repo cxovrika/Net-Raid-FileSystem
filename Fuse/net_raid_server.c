@@ -9,6 +9,7 @@
 #include "shared_types.h"
 #include "shared_constants.h"
 #include "net_raid_server.h"
+#include "md5.h"
 
 #include "tools.c"
 

@@ -6,6 +6,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/xattr.h>
+#include "md5.h"
 
 static void get_server_reality_path(const char* path, char rpath[MAX_PATH]) {
 	rpath[0] = '\0';
@@ -190,9 +193,14 @@ handle_open(struct task_R1 task) {
     get_server_reality_path(task.path, rpath);
 
     int res = open(rpath, task.flags);
-    if (res == -1) resp.ret_val = -errno; else
-                   resp.ret_val = 0, close(res);
+    if (res == -1) resp.ret_val = -errno;
+		else {
+			resp.ret_val = 0, close(res);
 
+			getxattr(rpath, "user.hash", resp.old_hash, 64);
+		}
+
+		get_hash_from_fd(rpath, resp.cur_hash);
     return resp;
 }
 
@@ -241,7 +249,11 @@ handle_write(struct task_R1 task) {
     resp.ret_val = res;
     close (fd);
 
-    return resp;
+		unsigned char hash[64];
+		get_hash_from_fd(rpath, hash);
+		setxattr(rpath, "user.hash", hash, 64, 0);
+
+		return resp;
 }
 
 struct server_response_R1

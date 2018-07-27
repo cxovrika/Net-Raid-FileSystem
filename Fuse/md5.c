@@ -264,7 +264,7 @@ void get_hash_from_fd(char* path, char* hash) {
 	fclose(f);
 
 	content[fsize] = '\0';
-	printf("file content:\n->%s<-\n", content);
+
 	MD5_CTX cx;
   MD5_Init(&cx);
   MD5_Update(&cx, content, fsize);
@@ -272,6 +272,7 @@ void get_hash_from_fd(char* path, char* hash) {
   MD5_Final(result, &cx);
 
 	memcpy(hash, result, 64);
+	// hash[64] = '\0';
 }
 
 
