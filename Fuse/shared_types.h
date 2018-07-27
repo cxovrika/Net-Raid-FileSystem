@@ -44,8 +44,9 @@ struct server_response_R1 {
   int files_in_dir;
   char file_names[64][32];
   struct stat stats[32];
-  unsigned char old_hash[64];
-  unsigned char cur_hash[64];
+  unsigned char old_hash[16];
+  unsigned char cur_hash[16];
+  int hashes_match;
   int success;
 };
 

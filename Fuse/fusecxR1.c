@@ -60,10 +60,10 @@ static struct task_R1 generate_task_R1(char* comment, int task_type, const char*
 static int cx_getattr(const char *path, struct stat *stbuf)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("getattr", TASK_GETATTR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
@@ -74,20 +74,20 @@ static int cx_getattr(const char *path, struct stat *stbuf)
 
 	printf("called GETATTR, path: %s\n", path);
 
-	if (resp[last_alive].ret_val == 0) {
-		memcpy(stbuf, &resp[last_alive].stbuf, sizeof(struct stat));
+	if (resp[first_alive].ret_val == 0) {
+		memcpy(stbuf, &resp[first_alive].stbuf, sizeof(struct stat));
 	}
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 static int cx_access(const char *path, int mask)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("access", TASK_ACCESS, path, NULL, 0, 0, mask, 0, 0, NULL, NULL, 0);
@@ -98,16 +98,16 @@ static int cx_access(const char *path, int mask)
 
 	printf("called ACCESS, path: %s\n", path);
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 static int cx_readlink(const char *path, char *buf, size_t size)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("readlink", TASK_READLINK, path, buf, size, 0, 0, 0, 0, NULL, NULL, 0);
@@ -118,11 +118,11 @@ static int cx_readlink(const char *path, char *buf, size_t size)
 
 	printf("called READLINK, path: %s\n", path);
 
-	if (resp[last_alive].ret_val == 0) {
-		memcpy(buf, resp[last_alive].buf, size);
+	if (resp[first_alive].ret_val == 0) {
+		memcpy(buf, resp[first_alive].buf, size);
 	}
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 
@@ -130,10 +130,10 @@ static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("readdir", TASK_READDIR, path, buf, 0, offset, 0, 0, 0, NULL, NULL, 0);
@@ -144,8 +144,8 @@ static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	printf("called READDIR, path: %s\n", path);
 
-	for (int i = 0; i < resp[last_alive].files_in_dir; i++) {
-		filler(buf, resp[last_alive].file_names[i], &resp[last_alive].stats[i], 0);
+	for (int i = 0; i < resp[first_alive].files_in_dir; i++) {
+		filler(buf, resp[first_alive].file_names[i], &resp[first_alive].stats[i], 0);
 	}
 	// while ((de = readdir(dp)) != NULL) {
 	// 	struct stat st;
@@ -156,16 +156,16 @@ static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	// 		break;
 	// }
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("mknod", TASK_MKNOD, path, NULL, 0, 0, 0, mode, rdev, NULL, NULL, 0);
@@ -176,16 +176,16 @@ static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 
 	printf("called MKNOD, path: %s\n", path);
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 static int cx_mkdir(const char *path, mode_t mode)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("mkdir", TASK_MKDIR, path, NULL, 0, 0, 0, mode, 0, NULL, NULL, 0);
@@ -196,16 +196,16 @@ static int cx_mkdir(const char *path, mode_t mode)
 
 	printf("called MKDIR, path: %s\n", path);
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 static int cx_unlink(const char *path)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("unlink", TASK_UNLINK, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
@@ -216,16 +216,16 @@ static int cx_unlink(const char *path)
 
 	printf("called UNLINK, path: %s\n", path);
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 static int cx_rmdir(const char *path)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("rmdir", TASK_RMDIR, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
@@ -236,7 +236,7 @@ static int cx_rmdir(const char *path)
 
 	printf("called RMDIR, path: %s\n", path);
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 /*
 static int cx_symlink(const char *from, const char *to)
@@ -254,10 +254,10 @@ static int cx_symlink(const char *from, const char *to)
 static int cx_rename(const char *from, const char *to)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("rename", TASK_RENAME, NULL, NULL, 0, 0, 0, 0, 0, from, to, 0);
@@ -268,7 +268,7 @@ static int cx_rename(const char *from, const char *to)
 
 	printf("called RENAME\n");
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 /*
@@ -288,10 +288,10 @@ static int cx_link(const char *from, const char *to)
 static int cx_chmod(const char *path, mode_t mode)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("chmod", TASK_CHMOD, path, NULL, 0, 0, 0, mode, 0, NULL, NULL, 0);
@@ -302,7 +302,7 @@ static int cx_chmod(const char *path, mode_t mode)
 
 	printf("called CHMOD, path: %s\n", path);
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 /*
@@ -325,10 +325,10 @@ static int cx_chown(const char *path, uid_t uid, gid_t gid)
 static int cx_truncate(const char *path, off_t size)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("truncate", TASK_TRUNCATE, path, NULL, size, 0, 0, 0, 0, NULL, NULL, 0);
@@ -339,7 +339,7 @@ static int cx_truncate(const char *path, off_t size)
 
 	printf("called TRUNCATE, path: %s\n", path);
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 static int cx_utimens(const char *path, const struct timespec ts[2])
@@ -368,10 +368,10 @@ static int cx_utimens(const char *path, const struct timespec ts[2])
 static int cx_open(const char *path, struct fuse_file_info *fi)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("open", TASK_OPEN, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
@@ -382,17 +382,60 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 
 	printf("called OPEN, path: %s\n", path);
 
-	return resp[last_alive].ret_val;
+	if (alive_count <= 1) {
+		return resp[first_alive].ret_val;
+	}
+	printf("ret vals: %d %d\n", resp[0].ret_val, resp[1].ret_val);
+	printf("resp[0].hashes_match:%d\n",resp[0].hashes_match);
+	printf("shahes compared: %d\n", memcmp(resp[0].cur_hash, resp[1].cur_hash, 16));
+
+	if ((resp[0].ret_val == 0 && resp[1].ret_val != 0) ||
+ 			(resp[0].ret_val != 0 && resp[1].ret_val == 0) ||
+			(resp[0].ret_val == 0 && resp[1].ret_val == 0 && resp[0].hashes_match == 0 && memcmp(resp[0].cur_hash, resp[1].cur_hash, 16)) ||
+			(resp[0].ret_val == 0 && resp[1].ret_val == 0 && resp[1].hashes_match == 0 && memcmp(resp[0].cur_hash, resp[1].cur_hash, 16) && resp[0].hashes_match != 0) ) {
+
+			int from, to;
+			if (resp[0].ret_val == 0 && resp[1].ret_val != 0) from = 0, to = 1; else
+			if (resp[0].ret_val != 0 && resp[1].ret_val == 0) from = 1, to = 0; else
+			if (resp[0].ret_val == 0 && resp[1].ret_val == 0 && resp[0].hashes_match == 0 && memcmp(resp[0].cur_hash, resp[1].cur_hash, 16)) {
+				from  = 0;
+				to = 1;
+			} else {
+				from  = 1;
+				to = 0;
+			}
+
+			printf("from and to: %d %d\n", from, to);
+
+			struct task_R1 task = generate_task_R1("copy file", TASK_CPYFL, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
+			int data_sent = send(server_sockets[from], &task, sizeof(task), 0);
+			(void)(data_sent);
+
+			long file_size;
+			recv(server_sockets[from], &file_size, sizeof(file_size), 0);
+			char buf[file_size];
+			recv(server_sockets[from], buf, file_size, 0);
+
+			task = generate_task_R1("recieve file", TASK_RCVFL, path, NULL, file_size, 0, 0, 0, 0, NULL, NULL, 0);
+			data_sent = send(server_sockets[to], &task, sizeof(task), 0);
+			send(server_sockets[to], buf, file_size, 0);
+
+		}
+	else if (resp[0].ret_val != 0 && resp[1].ret_val != 0) {
+		return resp[0].ret_val;
+	}
+
+	return resp[0].ret_val;
 }
 
 static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 		    struct fuse_file_info *fi)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("read", TASK_READ, path, buf, size, offset, 0, 0, 0, NULL, NULL, 0);
@@ -403,19 +446,19 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 
 	printf("called READ, path: %s\n", path);
 
-	memcpy(buf, resp[last_alive].buf, size);
+	memcpy(buf, resp[first_alive].buf, size);
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 static int cx_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
 	struct server_response_R1 resp[server_count];
-	int alive_count = 0, last_alive = 0;
+	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
-		last_alive = i;
+		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
 		struct task_R1 task = generate_task_R1("write", TASK_WRITE, path, buf, size, offset, 0, 0, 0, NULL, NULL, 0);
@@ -426,7 +469,7 @@ static int cx_write(const char *path, const char *buf, size_t size,
 
 	printf("called WRITE, path: %s\n", path);
 
-	return resp[last_alive].ret_val;
+	return resp[first_alive].ret_val;
 }
 
 /*

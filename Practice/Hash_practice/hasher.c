@@ -3,10 +3,10 @@
 
 int main(int argc, char const *argv[]) {
 
-  unsigned char hash[64];
-  get_hash_from_fd("./a.txt", hash);
+  unsigned char hash[16];
+  get_hash_from_path("./a.txt", hash);
   int i;
-  for (i = 0; i < 64; i++)
+  for (i = 0; i < 16; i++)
     printf("%x", hash[i]);
 
 

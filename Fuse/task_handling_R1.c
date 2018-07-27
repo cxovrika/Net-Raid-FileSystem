@@ -197,10 +197,19 @@ handle_open(struct task_R1 task) {
 		else {
 			resp.ret_val = 0, close(res);
 
-			getxattr(rpath, "user.hash", resp.old_hash, 64);
+			getxattr(rpath, "user.hash", resp.old_hash, 16);
+			get_hash_from_path(rpath, resp.cur_hash);
+			resp.hashes_match = memcmp(resp.old_hash, resp.cur_hash, 16);
+			printf("old hash:\n");
+			for (int i = 0; i < 16; i++)
+			printf("%x", resp.old_hash[i]);
+			printf("\nnew hash:\n");
+			for (int i = 0; i < 16; i++)
+			printf("%x", resp.cur_hash[i]);
+			printf("\n");
+
 		}
 
-		get_hash_from_fd(rpath, resp.cur_hash);
     return resp;
 }
 
@@ -249,9 +258,15 @@ handle_write(struct task_R1 task) {
     resp.ret_val = res;
     close (fd);
 
-		unsigned char hash[64];
-		get_hash_from_fd(rpath, hash);
-		setxattr(rpath, "user.hash", hash, 64, 0);
+		unsigned char hash[16];
+		get_hash_from_path(rpath, hash);
+		setxattr(rpath, "user.hash", hash, 16, 0);
+		printf("kinda set hash to:\n");
+		for (int i = 0; i < 16; i++)
+		printf("%x", hash[i]);
+		printf("\n");
+
+
 
 		return resp;
 }
@@ -259,6 +274,54 @@ handle_write(struct task_R1 task) {
 struct server_response_R1
 handle_release(struct task_R1 task) {
     struct server_response_R1 resp;
+    return resp;
+}
+
+struct server_response_R1
+handle_cpyfl(struct task_R1 task) {
+    struct server_response_R1 resp;
+		char rpath[MAX_PATH];
+    get_server_reality_path(task.path, rpath);
+
+		FILE *f = fopen(rpath, "rb");
+		fseek(f, 0, SEEK_END);
+		long fsize = ftell(f);
+		fseek(f, 0, SEEK_SET);
+
+		char *content = malloc(fsize);
+		fread(content, fsize, 1, f);
+		fclose(f);
+
+		send(client_socket, &fsize, sizeof(fsize), 0);
+		send(client_socket, content, fsize, 0);
+
+    return resp;
+}
+
+struct server_response_R1
+handle_rcvfl(struct task_R1 task) {
+    struct server_response_R1 resp;
+		char rpath[MAX_PATH];
+    get_server_reality_path(task.path, rpath);
+
+		int fsize = task.size;
+		char buf[fsize + 1];
+		printf("I HAD NO FILE, SO IM GONNA RECIEVE %d bytes now\n", fsize);
+		recv(client_socket, buf, fsize, 0);
+		buf[fsize] = '\0';
+		printf("GOT THE: %c%c%c\n", buf[0], buf[1], buf[2]);
+
+		// int fd = open(rpath, O_CREAT, S_IRWXU);
+		// write(fd, buf, fsize);
+		// close(fd);
+		FILE* fptr = fopen(rpath, "wb");
+		fprintf(fptr, "%s", buf);
+		fclose(fptr);
+
+		unsigned char hash[64];
+		get_hash_from_path(rpath, hash);
+		setxattr(rpath, "user.hash", hash, 64, 0);
+
     return resp;
 }
 
@@ -325,6 +388,16 @@ void handle_task_R1(struct task_R1 task) {
 
   if (task.task_type == TASK_RELEASE) {
     resp = handle_release(task);
+  }
+
+	if (task.task_type == TASK_CPYFL) {
+    resp = handle_cpyfl(task);
+		return;
+  }
+
+	if (task.task_type == TASK_RCVFL) {
+    resp = handle_rcvfl(task);
+		return;
   }
 
 	send(client_socket, &resp, sizeof(resp), 0);

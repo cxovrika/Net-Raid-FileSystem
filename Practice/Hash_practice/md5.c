@@ -253,7 +253,7 @@ void MD5_Final(unsigned char *result, MD5_CTX *ctx)
 	memset(ctx, 0, sizeof(*ctx));
 }
 
-void get_hash_from_fd(char* path, char* hash) {
+void get_hash_from_path(char* path, char* hash) {
 	FILE *f = fopen(path, "rb");
 	fseek(f, 0, SEEK_END);
 	long fsize = ftell(f);

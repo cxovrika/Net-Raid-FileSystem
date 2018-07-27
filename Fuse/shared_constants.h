@@ -20,6 +20,8 @@ int TASK_WRITE = 15;
 int TASK_RELEASE = 16;
 int TASK_MKDIR = 17;
 int TASK_RENAME = 18;
+int TASK_CPYFL = 19;
+int TASK_RCVFL = 20;
 
 
 
