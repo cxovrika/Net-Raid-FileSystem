@@ -388,6 +388,7 @@ static int cx_utimens(const char *path, const struct timespec ts[2])
 {
 	printf("called UTIMENS, path: %s\n", path);
 	return 0; //for now :V
+
 	char rpath[MAX_PATH];
 	get_reality_path(path, rpath);
 	// printf("path: %s , mpath: %s\n", path, mpath);
@@ -724,11 +725,35 @@ void* health_check(void* data_) {
 				(void)data_sent;
 
 				struct server_response_R1 resp;
-				recv(server_sockets[1 - i], &resp, sizeof(resp), 0);
-				printf("files(%d):\n", resp.files_in_dir);
-				for (int i = 0; i < resp.files_in_dir; i++)
-					printf("%s\n", resp.file_names[i]);
-				printf("\nend of files\n");
+				while (1) {
+					recv(server_sockets[1 - i], &resp, sizeof(resp), 0);
+					if (resp.files_ended == 1) break;
+
+					if (resp.is_dir == 1) {
+						printf("recieved  dir: %s\n", resp.buf);
+						task = generate_task_R1("mkdir", TASK_MKDIR, resp.buf, NULL, 0, 0, 0, S_IRWXU, 0, NULL, NULL, 0);
+						int data_sent = send(server_sockets[i], &task, sizeof(task), 0);
+						(void)(data_sent);
+
+						recv(server_sockets[i], &resp, sizeof(struct server_response_R1), 0);
+
+					}
+						else
+					{
+						long file_size;
+						recv(server_sockets[1 - i], &file_size, sizeof(file_size), 0);
+						char buf[file_size];
+						recv(server_sockets[1 - i], buf, file_size, 0);
+						// printf("recieved file: %s\n", resp.buf);
+						// printf("content:\n");
+						// for (int i = 0; i < file_size; i++)
+						// 	printf("%c", buf[i]);
+						// printf("\nend of file\n");
+						task = generate_task_R1("recieve file", TASK_RCVFL, resp.buf, NULL, file_size, 0, 0, 0, 0, NULL, NULL, 0);
+						data_sent = send(server_sockets[i], &task, sizeof(task), 0);
+						send(server_sockets[i], buf, file_size, 0);
+					}
+				}
 
 			}
 		}
