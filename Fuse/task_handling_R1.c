@@ -10,6 +10,7 @@
 #include <sys/xattr.h>
 #include "md5.h"
 
+
 static void get_server_reality_path(const char* path, char rpath[MAX_PATH]) {
 	rpath[0] = '\0';
 	strcat(rpath, path_to_storage);
@@ -308,6 +309,56 @@ handle_rcvfl(struct task_R1 task) {
     return resp;
 }
 
+struct server_response_R1
+handle_smwyg(struct task_R1 task) {
+    struct server_response_R1 resp;
+		char rpath[MAX_PATH];
+    get_server_reality_path("/", rpath);
+
+		printf("in smwyg, rpath: %s\n",  rpath);
+		DIR *dp;
+		struct dirent *de;
+
+		dp = opendir(rpath);
+		if (dp == NULL) {
+			resp.ret_val = -errno;
+			return resp;
+		}
+
+		int files_in_dir = 0;
+		while ((de = readdir(dp)) != NULL) {
+			strcpy(resp.file_names[files_in_dir], de->d_name);
+			memset(&resp.stats[files_in_dir], 0, sizeof(struct stat));
+			resp.stats[files_in_dir].st_ino = de->d_ino;
+			resp.stats[files_in_dir].st_mode = de->d_type << 12;
+
+			files_in_dir++;
+		}
+
+		resp.files_in_dir = files_in_dir;
+		resp.ret_val = 0;
+		closedir(dp);
+
+		printf("ended smwyg\n");
+    return resp;
+}
+
+struct server_response_R1
+handle_harakiri(struct task_R1 task) {
+    struct server_response_R1 resp;
+		printf("IM GONNA KILL MYSELF!\n");
+		char rpath[MAX_PATH];
+    get_server_reality_path("/", rpath);
+
+		char command[1024] = "exec rm -r ";
+		strcat(command, rpath);
+		strcat(command, "*");
+		printf("gonna: %s\n", command);
+		// system(command);
+
+    return resp;
+}
+
 
 void handle_task_R1(struct task_R1 task) {
   struct server_response_R1 resp;
@@ -385,6 +436,15 @@ void handle_task_R1(struct task_R1 task) {
 
 	if (task.task_type == TASK_HEALTHCHECK) {
     return;
+  }
+
+	if (task.task_type == TASK_SMWYG) {
+    resp = handle_smwyg(task);
+  }
+
+	if (task.task_type == TASK_HARAKIRI) {
+    resp = handle_harakiri(task);
+		return;
   }
 
 	send(client_socket, &resp, sizeof(resp), 0);

@@ -23,6 +23,9 @@ int TASK_RENAME = 18;
 int TASK_CPYFL = 19;
 int TASK_RCVFL = 20;
 int TASK_HEALTHCHECK = 21;
+int TASK_SMWYG = 22;
+int TASK_HARAKIRI = 23;
+
 
 #define MAX_PATH 512
 #define MAX_BUF 8192
