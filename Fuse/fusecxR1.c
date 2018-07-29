@@ -666,6 +666,75 @@ void get_server_connections() {
 	}
 }
 
+void fill_up_server(int i) {
+	struct initial_task it;
+	it.task_type = 2;
+	send(server_sockets[i], &it, sizeof(it), 0);
+
+	server_status[i] = 0;
+	server_unresponsiveness[i] = 0;
+
+	printf("server %d is restored!\n", i);
+	printf("server %d will take harakiri task now\n", i);
+	struct task_R1 task = generate_task_R1("harakiri", TASK_HARAKIRI, NULL, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
+	int data_sent = send(server_sockets[i], &task, sizeof(task), 0);
+
+	printf("server %d will be used to copy files now\n", 1 - i);
+	task = generate_task_R1("SMWYG", TASK_SMWYG, NULL, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
+	data_sent = send(server_sockets[1 - i], &task, sizeof(task), 0);
+	(void)data_sent;
+
+	struct server_response_R1 resp;
+	while (1) {
+		recv(server_sockets[1 - i], &resp, sizeof(resp), 0);
+		if (resp.files_ended == 1) break;
+
+		if (resp.is_dir == 1) {
+			printf("recieved  dir: %s\n", resp.buf);
+			task = generate_task_R1("mkdir", TASK_MKDIR, resp.buf, NULL, 0, 0, 0, S_IRWXU, 0, NULL, NULL, 0);
+			int data_sent = send(server_sockets[i], &task, sizeof(task), 0);
+			(void)(data_sent);
+
+			recv(server_sockets[i], &resp, sizeof(struct server_response_R1), 0);
+
+		}
+			else
+		{
+			long file_size;
+			recv(server_sockets[1 - i], &file_size, sizeof(file_size), 0);
+			char buf[file_size];
+			recv(server_sockets[1 - i], buf, file_size, 0);
+			// printf("recieved file: %s\n", resp.buf);
+			// printf("content:\n");
+			// for (int i = 0; i < file_size; i++)
+			// 	printf("%c", buf[i]);
+			// printf("\nend of file\n");
+			task = generate_task_R1("recieve file", TASK_RCVFL, resp.buf, NULL, file_size, 0, 0, 0, 0, NULL, NULL, 0);
+			data_sent = send(server_sockets[i], &task, sizeof(task), 0);
+			send(server_sockets[i], buf, file_size, 0);
+		}
+	}
+}
+
+void change_with_hotswap(int i) {
+	server_sockets[i] = socket(AF_INET, SOCK_STREAM, 0);
+
+	int server_ip;
+	inet_pton(AF_INET, hotswap.server, &server_ip);
+
+	struct sockaddr_in server_address;
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(hotswap.port);
+	server_address.sin_addr.s_addr = server_ip;
+	int result = connect(server_sockets[i], (struct sockaddr *) &server_address, sizeof(server_address));
+	if (result == -1) {
+		printf("<!-- could not connect to hotswap!--!>\n");
+		return;
+	}
+
+	fill_up_server(i);
+}
+
 void* health_check(void* data_) {
 	struct task_R1 task;
 
@@ -700,61 +769,14 @@ void* health_check(void* data_) {
 					server_unresponsiveness[i]++;
 					if (server_unresponsiveness[i] >= timeout) {
 						printf("server %d NEEDS TO BE CHANGED WITH HOTSWAP!!!!\n", i);\
-						printf("so sad that its not implemented... ;(\n");
+						change_with_hotswap(i);
 					} else {
 						printf("server %d is not responding %d times in a row(gonna wait till %d)\n", i, server_unresponsiveness[i], timeout);
 					}
 					continue;
 				}
 
-				struct initial_task it;
-				it.task_type = 2;
-				send(server_sockets[i], &it, sizeof(it), 0);
-
-				server_status[i] = 0;
-				server_unresponsiveness[i] = 0;
-
-				printf("server %d is restored!\n", i);
-				printf("server %d will take harakiri task now\n", i);
-				task = generate_task_R1("harakiri", TASK_HARAKIRI, NULL, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
-				int data_sent = send(server_sockets[i], &task, sizeof(task), 0);
-
-				printf("server %d will be used to copy files now\n", 1 - i);
-				task = generate_task_R1("SMWYG", TASK_SMWYG, NULL, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
-				data_sent = send(server_sockets[1 - i], &task, sizeof(task), 0);
-				(void)data_sent;
-
-				struct server_response_R1 resp;
-				while (1) {
-					recv(server_sockets[1 - i], &resp, sizeof(resp), 0);
-					if (resp.files_ended == 1) break;
-
-					if (resp.is_dir == 1) {
-						printf("recieved  dir: %s\n", resp.buf);
-						task = generate_task_R1("mkdir", TASK_MKDIR, resp.buf, NULL, 0, 0, 0, S_IRWXU, 0, NULL, NULL, 0);
-						int data_sent = send(server_sockets[i], &task, sizeof(task), 0);
-						(void)(data_sent);
-
-						recv(server_sockets[i], &resp, sizeof(struct server_response_R1), 0);
-
-					}
-						else
-					{
-						long file_size;
-						recv(server_sockets[1 - i], &file_size, sizeof(file_size), 0);
-						char buf[file_size];
-						recv(server_sockets[1 - i], buf, file_size, 0);
-						// printf("recieved file: %s\n", resp.buf);
-						// printf("content:\n");
-						// for (int i = 0; i < file_size; i++)
-						// 	printf("%c", buf[i]);
-						// printf("\nend of file\n");
-						task = generate_task_R1("recieve file", TASK_RCVFL, resp.buf, NULL, file_size, 0, 0, 0, 0, NULL, NULL, 0);
-						data_sent = send(server_sockets[i], &task, sizeof(task), 0);
-						send(server_sockets[i], buf, file_size, 0);
-					}
-				}
-
+				fill_up_server(i);
 			}
 		}
 		sem_post(&syscall_lock);

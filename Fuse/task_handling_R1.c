@@ -400,7 +400,7 @@ handle_harakiri(struct task_R1 task) {
     struct server_response_R1 resp;
 		printf("IM GONNA KILL MYSELF!\n");
 		char rpath[MAX_PATH];
-    get_server_reality_path("", rpath);
+    get_server_reality_path("/", rpath);
 
 		char command[1024] = "exec rm -r ";
 		strcat(command, rpath);
