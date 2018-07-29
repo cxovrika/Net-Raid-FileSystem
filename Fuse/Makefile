@@ -6,6 +6,9 @@ server1:
 server2:
 	./net_raid_server 127.0.0.1 10002 ./serverside2
 
+hotswap:
+	./net_raid_server 127.0.0.1 11111 ./hotswapside
+
 
 client:
 	./net_raid_client ./configurations

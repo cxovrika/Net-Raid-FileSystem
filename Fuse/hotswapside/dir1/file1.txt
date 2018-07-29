@@ -1,0 +1,2 @@
+hi! i am file1
+my path is dir1/file1
