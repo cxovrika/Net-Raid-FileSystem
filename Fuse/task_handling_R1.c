@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdio.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/xattr.h>
@@ -237,10 +238,11 @@ handle_read(struct task_R1 task) {
 
 struct server_response_R1
 handle_write(struct task_R1 task) {
+		printf("in WRITE, size: %d, offset: %d\n", (int)task.size, (int)task.offset);
     struct server_response_R1 resp;
     char rpath[MAX_PATH];
     get_server_reality_path(task.path, rpath);
-    int fd, res;
+    int fd, res = 0;
 
     fd = open(rpath, O_WRONLY);
     if (fd == -1) {
@@ -248,19 +250,23 @@ handle_write(struct task_R1 task) {
       return resp;
     }
 
-    res = pwrite(fd, task.buf, task.size, task.offset);
+		lseek(fd, task.offset, SEEK_SET);
+		res = write(fd, task.buf, task.size);
+    // res = pwrite(fd, task.buf, task.size, task.offset);
     if (res == -1) {
-      resp.ret_val = -errno;
+			resp.ret_val = -errno;
+			close(fd);
       return resp;
     }
     resp.ret_val = res;
+		// resp.ret_val = task.size;
     close (fd);
 
 		unsigned char hash[16];
 		get_hash_from_path(rpath, hash);
 		setxattr(rpath, "user.hash", hash, 16, 0);
 
-
+		printf("WRITE ENDED\n");
 		return resp;
 }
 

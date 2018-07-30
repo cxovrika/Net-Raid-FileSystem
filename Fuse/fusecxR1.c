@@ -21,6 +21,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <time.h>
 #include <semaphore.h>
 
 #include "shared_types.h"
@@ -35,10 +37,47 @@ int server_sockets[32], server_status[32];
 struct server_and_port servers[32];
 struct server_and_port hotswap;
 int server_unresponsiveness[32];
-
+int errorlog_fd;
+char disk_name[64];
 sem_t syscall_lock;
 
 //CX
+// static void log_
+
+void log_info(char* text) {
+	dprintf(errorlog_fd, "%s\n", text);
+}
+
+void log_file_restoring(const char* path) {
+	char info[256];
+	time_t timer;
+	char time_buffer[26];
+  struct tm* tm_info;
+
+	time(&timer);
+  tm_info = localtime(&timer);
+	strftime(time_buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+	snprintf(info, sizeof(info), "[%s] %s is restoring file: %s", time_buffer, disk_name, path);
+	dprintf(errorlog_fd, "%s\n", info);
+}
+
+void log_server_info(int server_index, const char* text, const char* path) {
+	time_t timer;
+	char time_buffer[26];
+  struct tm* tm_info;
+
+	time(&timer);
+  tm_info = localtime(&timer);
+	strftime(time_buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+
+	char info[256];
+	info[0] = '\0';
+	char port[10];
+	snprintf(port, sizeof(port), "%d", servers[server_index].port);
+	snprintf(info, sizeof(info), "[%s] %s %s:%s %s  %s", time_buffer, disk_name, servers[server_index].server, port, text, path);
+	dprintf(errorlog_fd, "%s\n", info);
+}
+
 static void get_reality_path(const char* path, char rpath[MAX_PATH]) {
 	rpath[0] = '\0';
 	strcat(rpath, REALITY_PATH);
@@ -73,6 +112,7 @@ static int cx_getattr(const char *path, struct stat *stbuf)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called getattr", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -100,6 +140,7 @@ static int cx_access(const char *path, int mask)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called access", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -123,6 +164,7 @@ static int cx_readlink(const char *path, char *buf, size_t size)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called readlink", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -152,6 +194,7 @@ static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called readdir", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -166,14 +209,6 @@ static int cx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	for (int i = 0; i < resp[first_alive].files_in_dir; i++) {
 		filler(buf, resp[first_alive].file_names[i], &resp[first_alive].stats[i], 0);
 	}
-	// while ((de = readdir(dp)) != NULL) {
-	// 	struct stat st;
-	// 	memset(&st, 0, sizeof(st));
-	// 	st.st_ino = de->d_ino;
-	// 	st.st_mode = de->d_type << 12;
-	// 	if (filler(buf, de->d_name, &st, 0))
-	// 		break;
-	// }
 
 	if (--sysdepth == 0) sem_post(&syscall_lock);
 	return resp[first_alive].ret_val;
@@ -188,6 +223,7 @@ static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called mknod", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -196,8 +232,6 @@ static int cx_mknod(const char *path, mode_t mode, dev_t rdev)
 		(void)(data_sent);
 		recv(server_sockets[i], &resp[i], sizeof(struct server_response_R1), 0);
 	}
-
-
 
 	if (--sysdepth == 0) sem_post(&syscall_lock);
 	return resp[first_alive].ret_val;
@@ -212,6 +246,7 @@ static int cx_mkdir(const char *path, mode_t mode)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called mmkdir", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -235,6 +270,7 @@ static int cx_unlink(const char *path)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called unlink", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -258,6 +294,7 @@ static int cx_rmdir(const char *path)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called rmdir", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -293,6 +330,7 @@ static int cx_rename(const char *from, const char *to)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called rename", from);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -330,6 +368,7 @@ static int cx_chmod(const char *path, mode_t mode)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called chmod", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -370,6 +409,7 @@ static int cx_truncate(const char *path, off_t size)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called truncate", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -387,23 +427,6 @@ static int cx_truncate(const char *path, off_t size)
 static int cx_utimens(const char *path, const struct timespec ts[2])
 {
 	printf("called UTIMENS, path: %s\n", path);
-	return 0; //for now :V
-
-	char rpath[MAX_PATH];
-	get_reality_path(path, rpath);
-	// printf("path: %s , mpath: %s\n", path, mpath);
-	int res;
-	struct timeval tv[2];
-
-	tv[0].tv_sec = ts[0].tv_sec;
-	tv[0].tv_usec = ts[0].tv_nsec / 1000;
-	tv[1].tv_sec = ts[1].tv_sec;
-	tv[1].tv_usec = ts[1].tv_nsec / 1000;
-
-	res = utimes(rpath, tv);
-	if (res == -1)
-		return -errno;
-
 	return 0;
 }
 
@@ -417,6 +440,7 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called open", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -425,7 +449,6 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 		(void)(data_sent);
 		recv(server_sockets[i], &resp[i], sizeof(struct server_response_R1), 0);
 	}
-
 
 	if (alive_count <= 1) {
 		if (--sysdepth == 0) sem_post(&syscall_lock);
@@ -451,7 +474,7 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 				to = 0;
 			}
 
-			// printf("from and to: %d %d\n", from, to);
+			log_file_restoring(path);
 
 			struct task_R1 task = generate_task_R1("copy file", TASK_CPYFL, path, NULL, 0, 0, 0, 0, 0, NULL, NULL, 0);
 			int data_sent = send(server_sockets[from], &task, sizeof(task), 0);
@@ -479,13 +502,15 @@ static int cx_open(const char *path, struct fuse_file_info *fi)
 static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 		    struct fuse_file_info *fi)
 {
+
 	if (sysdepth++ == 0) sem_wait(&syscall_lock);
-	printf("called READ, path: %s\n", path);
+	printf("called READ(%d), path: %s\n", (int)size, path);
 
 	struct server_response_R1 resp[server_count];
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called read", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -494,7 +519,6 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 		(void)(data_sent);
 		recv(server_sockets[i], &resp[i], sizeof(struct server_response_R1), 0);
 	}
-
 
 	memcpy(buf, resp[first_alive].buf, size);
 
@@ -506,12 +530,13 @@ static int cx_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
 	if (sysdepth++ == 0) sem_wait(&syscall_lock);
-	printf("called WRITE, path: %s\n", path);
+	printf("called WRITE, size: %d, offset: %d,  path: %s\n", (int)size, (int)offset, path);
 
 	struct server_response_R1 resp[server_count];
 	int alive_count = 0, first_alive = -1;
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
+		log_server_info(i, "called write", path);
 		if (first_alive == -1) first_alive = i;
 		alive_count++;
 
@@ -523,6 +548,7 @@ static int cx_write(const char *path, const char *buf, size_t size,
 
 
 	if (--sysdepth == 0) sem_post(&syscall_lock);
+	printf("return WRITE, size: %d, offset: %d,  path: %s\n", (int)size, (int)offset, path);
 	return resp[first_alive].ret_val;
 }
 
@@ -637,14 +663,14 @@ static struct fuse_operations cx_oper = {
 };
 
 void parse_server_data(int argc, char *argv[]) {
-	server_count = argc/2 - 1;
+	server_count = (argc-5)/2;
 
 	for (int i = 0; i < server_count; i++) {
-		strcpy(servers[i].server, argv[2*i + 1]);
-		servers[i].port = atoi(argv[2*i + 2]);
+		strcpy(servers[i].server, argv[2*i + 3]);
+		servers[i].port = atoi(argv[2*i + 4]);
 	}
-	strcpy(hotswap.server, argv[2*server_count + 1]);
-	hotswap.port = atoi(argv[2*server_count + 2]);
+	strcpy(hotswap.server, argv[2*server_count + 3]);
+	hotswap.port = atoi(argv[2*server_count + 4]);
 }
 
 void get_server_connections() {
@@ -660,9 +686,11 @@ void get_server_connections() {
 		server_address.sin_addr.s_addr = server_ip;
 
 		connect(server_sockets[i], (struct sockaddr *) &server_address, sizeof(server_address));
+
 		struct initial_task it;
 		it.task_type = 2;
 		send(server_sockets[i], &it, sizeof(it), MSG_NOSIGNAL);
+		log_server_info(i, "connected", "");
 	}
 }
 
@@ -732,6 +760,7 @@ void change_with_hotswap(int i) {
 		return;
 	}
 
+	servers[i] = hotswap;
 	fill_up_server(i);
 }
 
@@ -739,7 +768,7 @@ void* health_check(void* data_) {
 	struct task_R1 task;
 
 	while(1) {
-		sleep(2);
+		sleep(1);
 		printf("\n!== Checking server healths ==!\n");
 		sem_wait(&syscall_lock);
 		for (int i = 0; i < server_count; i++) {
@@ -749,6 +778,7 @@ void* health_check(void* data_) {
 				int data_sent = send(server_sockets[i], &task, sizeof(task), MSG_NOSIGNAL);
 				if (data_sent == -1) {
 					printf("server %d did not took our healthchek!\n", i);
+					log_server_info(i, "could not send data", "");
 					server_status[i] = -1;
 				} else {
 					printf("server %d is alive!\n", i);
@@ -768,8 +798,9 @@ void* health_check(void* data_) {
 				if (result == -1) {
 					server_unresponsiveness[i]++;
 					if (server_unresponsiveness[i] >= timeout) {
-						printf("server %d NEEDS TO BE CHANGED WITH HOTSWAP!!!!\n", i);\
+						log_server_info(i, "will be changed with hotswap", "");
 						change_with_hotswap(i);
+						log_server_info(i, "hot swap server added", "");
 					} else {
 						printf("server %d is not responding %d times in a row(gonna wait till %d)\n", i, server_unresponsiveness[i], timeout);
 					}
@@ -786,8 +817,6 @@ void* health_check(void* data_) {
 }
 
 void start_health_checker() {
-	sem_init(&syscall_lock, 0, 1);
-
 	pthread_t thread_id;
 	pthread_create(&thread_id, NULL, health_check, NULL);
 }
@@ -795,18 +824,18 @@ void start_health_checker() {
 int main(int argc, char *argv[])
 {
 	parse_server_data(argc, argv);
+	errorlog_fd = open(argv[1], O_WRONLY|O_APPEND);
+	strcpy(disk_name, argv[2]);
 	get_server_connections();
-	start_health_checker();
+	sem_init(&syscall_lock, 0, 1);
+	// start_health_checker();
 
-	// argv[2] = NULL;
-	// argv[1] = argv[0];
-	// argv[0] = path_to_fuse_R1; //pure magic here :V
+	//pure magic here :V
 	argv[2] = NULL;
 	argv[1] = argv[0];
-	argv[0] = path_to_fuse_R1; //pure magic here :V
+	argv[0] = path_to_fuse_R1;
 	argv[2] = malloc(3);
 	strcpy(argv[2], "-f");
 	argv[3] = NULL;
-	printf("servers: %d\n", server_count);
 	return fuse_main(3, argv, &cx_oper, NULL);
 }

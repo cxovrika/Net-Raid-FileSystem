@@ -1,4 +1,4 @@
-errorlog = /path/to/error.log
+errorlog = ./errorlog.txt
 cache_size = 1024
 cache_replacment = rlu
 timeout = 10
