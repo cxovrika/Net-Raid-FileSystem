@@ -29,7 +29,7 @@
 #include "shared_constants.h"
 #include "md5.h"
 
-int timeout = 10; //TODO should be passed
+int timeout;
 int sysdepth = 0;
 
 int server_count;
@@ -42,7 +42,6 @@ char disk_name[64];
 sem_t syscall_lock;
 
 //CX
-// static void log_
 
 void log_info(char* text) {
 	dprintf(errorlog_fd, "%s\n", text);
@@ -508,6 +507,10 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 
 	struct server_response_R1 resp[server_count];
 	int alive_count = 0, first_alive = -1;
+	char* buffs[2];
+	buffs[0] = malloc(1);
+	buffs[1] = malloc(1);
+
 	for (int i = 0; i < server_count; i++) {
 		if (server_status[i] != 0) continue;
 		log_server_info(i, "called read", path);
@@ -518,9 +521,15 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 		int data_sent = send(server_sockets[i], &task, sizeof(task), 0);
 		(void)(data_sent);
 		recv(server_sockets[i], &resp[i], sizeof(struct server_response_R1), 0);
+		if (resp[i].size > 0) {
+			buffs[i] = realloc(buffs[i], resp[i].size);
+			recv(server_sockets[i], buffs[i], resp[i].size, 0);
+		}
 	}
 
-	memcpy(buf, resp[first_alive].buf, size);
+	memcpy(buf, buffs[first_alive], resp[first_alive].size);
+	free(buffs[0]);
+	free(buffs[1]);
 
 	if (--sysdepth == 0) sem_post(&syscall_lock);
 	return resp[first_alive].ret_val;
@@ -663,14 +672,14 @@ static struct fuse_operations cx_oper = {
 };
 
 void parse_server_data(int argc, char *argv[]) {
-	server_count = (argc-5)/2;
+	server_count = (argc-6)/2;
 
 	for (int i = 0; i < server_count; i++) {
-		strcpy(servers[i].server, argv[2*i + 3]);
-		servers[i].port = atoi(argv[2*i + 4]);
+		strcpy(servers[i].server, argv[2*i + 4]);
+		servers[i].port = atoi(argv[2*i + 5]);
 	}
-	strcpy(hotswap.server, argv[2*server_count + 3]);
-	hotswap.port = atoi(argv[2*server_count + 4]);
+	strcpy(hotswap.server, argv[2*server_count + 4]);
+	hotswap.port = atoi(argv[2*server_count + 5]);
 }
 
 void get_server_connections() {
@@ -826,9 +835,10 @@ int main(int argc, char *argv[])
 	parse_server_data(argc, argv);
 	errorlog_fd = open(argv[1], O_WRONLY|O_APPEND);
 	strcpy(disk_name, argv[2]);
+	timeout = atoi(argv[3]);
 	get_server_connections();
 	sem_init(&syscall_lock, 0, 1);
-	// start_health_checker();
+	start_health_checker();
 
 	//pure magic here :V
 	argv[2] = NULL;

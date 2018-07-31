@@ -29,32 +29,34 @@ void parse_and_fill_parameters(int argc, char* argv[]) {
 
 void run_new_storage(int x) {
   struct storage_info si = storages[x];
-  int argc = (3 + 2*(si.server_count + 1) + 1);
+  int argc = (4 + 2*(si.server_count + 1) + 1);
   char** parameters = malloc(argc * sizeof(char*));
   parameters[0] = malloc(256);
   parameters[1] = malloc(256);
   parameters[2] = malloc(256);
+  parameters[3] = malloc(256);
 
   strcpy(parameters[0], si.mountpoint);
   strcpy(parameters[1], path_to_errorlog);
   strcpy(parameters[2], si.diskname);
+  strcpy(parameters[3], timeout);
 
   for (int i = 0; i < si.server_count; i++) {
     //server
-    parameters[2*i + 3] = malloc(32);
-    strcpy(parameters[2*i + 3], si.servers[i].server);
+    parameters[2*i + 4] = malloc(32);
+    strcpy(parameters[2*i + 4], si.servers[i].server);
 
     //port
-    parameters[2*i + 4] = malloc(32);
-    sprintf(parameters[2*i + 4], "%d", si.servers[i].port);
+    parameters[2*i + 5] = malloc(32);
+    sprintf(parameters[2*i + 5], "%d", si.servers[i].port);
   }
 
   //hotswap
-  parameters[2*si.server_count + 3] = malloc(32);
-  strcpy(parameters[2*si.server_count + 3], si.hotswap.server);
-
   parameters[2*si.server_count + 4] = malloc(32);
-  sprintf(parameters[2*si.server_count + 4], "%d", si.hotswap.port);
+  strcpy(parameters[2*si.server_count + 4], si.hotswap.server);
+
+  parameters[2*si.server_count + 5] = malloc(32);
+  sprintf(parameters[2*si.server_count + 5], "%d", si.hotswap.port);
 
   //terminating NULL (needed for execv)
   parameters[argc-1] = NULL;
@@ -71,7 +73,7 @@ int main(int argc, char* argv[])
     }
 
     get_configurations(config_fd);
-    
+
     for (int i = 0; i < 1/*storage_count*/; i++) {
       switch(fork()) {
         case -1:

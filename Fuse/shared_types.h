@@ -50,6 +50,7 @@ struct server_response_R1 {
   int success;
   int is_dir;
   int files_ended;
+  int size;
 };
 
 

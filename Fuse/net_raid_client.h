@@ -13,7 +13,7 @@ struct storage_info storages[128];
 
 char path_to_errorlog[256];
 int cache_size;
-int timeout;
+char timeout[32];
 
 
 #endif

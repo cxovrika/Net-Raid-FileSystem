@@ -225,13 +225,22 @@ handle_read(struct task_R1 task) {
       return resp;
     }
 
-    res = pread(fd, resp.buf, task.size, task.offset);
+		char* buff = malloc(task.size);
+    res = pread(fd, buff, task.size, task.offset);
     if (res == -1) {
       resp.ret_val = -errno;
+			resp.size = 0;
+			send(client_socket, &resp, sizeof(resp), 0);
+			free(buff);
       return resp;
     }
     resp.ret_val = res;
+		resp.size = res;
     close (fd);
+
+		send(client_socket, &resp, sizeof(resp), 0);
+		send(client_socket, buff, res, 0);
+		free(buff);
 
     return resp;
 }
@@ -472,6 +481,7 @@ void handle_task_R1(struct task_R1 task) {
 
   if (task.task_type == TASK_READ) {
     resp = handle_read(task);
+		return;
   }
 
   if (task.task_type == TASK_WRITE) {

@@ -15,7 +15,7 @@ int get_next_token(int fd, char* token) {
   while (1) {
     int r = read(fd, &c, 1);
     if (r == 0) goto final;
-    if (c == '\n' || c == '\r' || c == ' ') continue;
+    if (c == '\n' || c == '\r' || c == ' ' || c == ',') continue;
 
     token[ret++] = c;
     break;
@@ -24,7 +24,7 @@ int get_next_token(int fd, char* token) {
   while (1) {
     int r = read(fd, &c, 1);
     if (r == 0) goto final;
-    if (c == '\n' || c == '\r' || c == ' ') goto final;
+    if (c == '\n' || c == '\r' || c == ' ' || c == ',') goto final;
 
     token[ret++] = c;
   }
@@ -58,7 +58,7 @@ void fill_non_storage_data(int config_fd) {
   get_next_token(config_fd, token);
   get_next_token(config_fd, token);
   get_next_token(config_fd, token);
-  timeout = atoi(token);
+  strcpy(timeout, token);
 }
 
 struct server_and_port get_server_and_port_from_token(char* token) {
