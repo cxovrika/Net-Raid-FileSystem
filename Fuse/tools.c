@@ -47,7 +47,7 @@ void fill_non_storage_data(int config_fd) {
   get_next_token(config_fd, token);
   get_next_token(config_fd, token);
   get_next_token(config_fd, token);
-  cache_size = atoi(token);
+  strcpy(cache_size, token);
 
   //cache_replacement
   get_next_token(config_fd, token);

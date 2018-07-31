@@ -1,5 +1,5 @@
 errorlog = ./errorlog.txt
-cache_size = 1024
+cache_size = 1024K
 cache_replacment = rlu
 timeout = 10
 

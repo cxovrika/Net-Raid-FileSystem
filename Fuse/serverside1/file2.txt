@@ -1,2 +1,0 @@
-im file2
-i am in rootdir

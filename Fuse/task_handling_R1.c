@@ -349,7 +349,7 @@ int send_client_file(char* spath, int is_dir) {
 	}
 }
 
-int remove_directory(const char *path)
+int send_directory(const char *path)
 {
 	DIR* dir = opendir(path);
 	size_t path_len = strlen(path);
@@ -380,7 +380,7 @@ int remove_directory(const char *path)
 			{
 			  if (S_ISDIR(statbuf.st_mode)) {
 					send_client_file(new_path, 1);
-					remove_directory(new_path);
+					send_directory(new_path);
 			  }
 					else
 			  {
@@ -404,7 +404,7 @@ handle_smwyg(struct task_R1 task) {
     get_server_reality_path("", rpath);
 
 		printf("in smwyg, rpath: %s\n",  rpath);
-		remove_directory(rpath);
+		send_directory(rpath);
 		resp.files_ended = 1;
 		printf("ended smwyg\n");
     return resp;
