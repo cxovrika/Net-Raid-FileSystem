@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/epoll.h>
 
 #include <netinet/in.h>
 #include "shared_types.h"
@@ -11,9 +12,13 @@
 #include "net_raid_server.h"
 #include "md5.h"
 
+
 #include "tools.c"
 
 #include "task_handling_R1.c"
+
+static struct epoll_event ev;
+int epfd;
 
 void bring_server_up() {
   printf("Bringing server up...\n");
@@ -45,7 +50,8 @@ void parse_and_fill_parameters(int argc, char* argv[]) {
 void serve_client_for_R1() {
   struct task_R1 task;
   while (1) {
-    int bytes_read = recv(client_socket, &task, sizeof(task), 0);
+    int nfds = epoll_wait(epfd, &ev, 1, -1);
+    int bytes_read = recv(ev.data.fd, &task, sizeof(task), 0);
     if (bytes_read == 0) break;
     handle_task_R1(task);
   }
@@ -58,8 +64,15 @@ void accept_and_serve_clienet() {
   client_socket = accept(server_socket, NULL, NULL);
   printf("Accepted!\n");
 
+  printf("creating epoll\n");
+  epfd = epoll_create(1);
+  ev.events = EPOLLIN | EPOLLPRI | EPOLLERR | EPOLLHUP;
+  ev.data.fd = client_socket;
+  int res = epoll_ctl(epfd, EPOLL_CTL_ADD, client_socket, &ev);
+  int nfds = epoll_wait(epfd, &ev, 1, -1);
+
   struct initial_task it;
-  recv(client_socket, &it, sizeof(it), 0);
+  recv(ev.data.fd, &it, sizeof(it), 0);
 
   printf("initial_task: %d\n", it.task_type);
 
