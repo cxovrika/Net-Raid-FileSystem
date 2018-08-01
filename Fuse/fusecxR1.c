@@ -629,7 +629,10 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 	printf("called READ(%d), path: %s\n", (int)size, path);
 
 	int cached_read = check_cache_for_read(path, buf, (int)size, (int)offset);
-	if (cached_read != -1) return cached_read;
+	if (cached_read != -1) {
+		if (--sysdepth == 0) sem_post(&syscall_lock);
+		return cached_read;
+	}
 
 	struct server_response_R1 resp[server_count];
 	int alive_count = 0, first_alive = -1;
@@ -972,10 +975,9 @@ int main(int argc, char *argv[])
 	timeout = atoi(argv[3]);
 	fill_cache_capacity(argv[4]);
 	set_up_cache();
-	printf("before server conenctions\n");
 	get_server_connections();
 	sem_init(&syscall_lock, 0, 1);
-	start_health_checker();
+	// start_health_checker();
 
 	//pure magic here :V
 	argv[2] = NULL;
