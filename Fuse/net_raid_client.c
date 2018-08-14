@@ -76,22 +76,22 @@ int main(int argc, char* argv[])
 
     get_configurations(config_fd);
 
-    for (int i = 0; i < 1/*storage_count*/; i++) {
+
+    for (int i = 0; i < storage_count; i++) {
       switch(fork()) {
         case -1:
           exit(100);
 
         case 0:
           run_new_storage(i);
-          // break;
+          break;
 
         default:
-          // run_new_storage(i);
           break;
       }
 
     }
 
-    while(1){}
+    while (1){}
     return 0;
 }

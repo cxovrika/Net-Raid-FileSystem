@@ -29,6 +29,7 @@ int TASK_HARAKIRI = 23;
 
 #define MAX_PATH 512
 #define MAX_BUF 8192
+#define MAX_FILES 64
 
 char path_to_fuse_R1[MAX_PATH] = "/home/vagrant/Net-Raid-FileSystem/Fuse/fusecxR1";
 char REALITY_PATH[MAX_PATH] = "/home/vagrant/Net-Raid-FileSystem/Fuse/reality";

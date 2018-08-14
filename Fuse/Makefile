@@ -1,10 +1,14 @@
-MOUNTPOINT1 = ./mountpoint1
-
 server1:
 	./net_raid_server 127.0.0.1 10001 ./serverside1
 
 server2:
 	./net_raid_server 127.0.0.1 10002 ./serverside2
+
+server3:
+	./net_raid_server 127.0.0.1 10011 ./serverside3
+
+server4:
+	./net_raid_server 127.0.0.1 10012 ./serverside4
 
 hotswap:
 	./net_raid_server 127.0.0.1 11111 ./hotswapside
@@ -22,4 +26,5 @@ clean:
 	rm net_raid_server -f
 	rm net_raid_client -f
 	rm fusecxR1 -f
-	fusermount -u $(MOUNTPOINT1)
+	fusermount -u ./mountpoint1
+	fusermount -u ./mountpoint2

@@ -21,7 +21,7 @@ static struct epoll_event ev;
 int epfd;
 
 void bring_server_up() {
-  printf("Bringing server up...\n");
+  // printf("Bringing server up...\n");
   // server socket creation
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -40,7 +40,7 @@ void bring_server_up() {
 }
 
 void parse_and_fill_parameters(int argc, char* argv[]) {
-  printf("Parsing arguments...\n");
+  // printf("Parsing arguments...\n");
   strcpy(client_ip, argv[1]);
   PORT = atoi(argv[2]);
   strcpy(path_to_storage, argv[3]);
@@ -59,12 +59,12 @@ void serve_client_for_R1() {
 
 
 void accept_and_serve_clienet() {
-  printf("Accepting client...\n");
+  // printf("Accepting client...\n");
   // accepting client
   client_socket = accept(server_socket, NULL, NULL);
-  printf("Accepted!\n");
+  // printf("Accepted!\n");
 
-  printf("creating epoll\n");
+  // printf("creating epoll\n");
   epfd = epoll_create(1);
   ev.events = EPOLLIN | EPOLLPRI | EPOLLERR | EPOLLHUP;
   ev.data.fd = client_socket;
@@ -74,7 +74,7 @@ void accept_and_serve_clienet() {
   struct initial_task it;
   recv(ev.data.fd, &it, sizeof(it), 0);
 
-  printf("initial_task: %d\n", it.task_type);
+  // printf("initial_task: %d\n", it.task_type);
 
   if (it.task_type == TASK_R1_STORAGE) {
     serve_client_for_R1();

@@ -58,6 +58,14 @@ Cnode* head;
 Cnode* tail;
 //CX
 
+void print_cache_status() {
+	printf("right now cache contains:\n");
+	for (Cnode* cur = head->next; cur != tail; cur = cur->next) {
+		printf("entry: path: %s , offset: %d, size: %d, pseudo_size: %d\n", cur->path, cur->offset, cur->size, cur->pseudo_size);
+	}
+	printf("--- ended cache info\n");
+}
+
 void set_up_cache() {
 	head = malloc(sizeof(Cnode));
 	tail = malloc(sizeof(Cnode));
@@ -67,47 +75,6 @@ void set_up_cache() {
 	tail->next = NULL;
 
 	cache_size = 0;
-}
-
-void update_cache_by_write(const char* path, const char* buf, int size, int offset) {
-
-	for (Cnode* cur = head->next; cur != tail; cur = cur->next) {
-		if (strcmp(cur->path, path)) continue;
-		int cst = cur->offset;
-		int cen = cur->offset + cur->size - 1;
-		int wst = offset;
-		int wen = offset + size - 1;
-		if (wst > cen || cst > wen) continue;
-
-		wst = wst > cst ? wst : cst;
-		wen = wen < cen ? wen : cen;
-		memcpy(cur->buf + (wst - cur->offset), buf, wen - wst + 1);
-	}
-
-}
-
-int check_cache_for_read(const char* path, const char* buf_, int size, int offset) {
-	char* buf;
-	memcpy(&buf, &buf_, sizeof(char*));
-
-	printf("\n\nCHECKING CACHE FOR READ, path: %s\n", path);
-
-	for (Cnode* cur = head->next; cur != tail; cur = cur->next) {
-		printf("comparing path to: %s\n", cur->path);
-		if (strcmp(cur->path, path)) continue;
-		int cst = cur->offset;
-		int cen = cur->offset + cur->pseudo_size - 1;
-		int rst = offset;
-		int ren = offset + size - 1;
-		printf("after cst: %d, cen: %d, rst: %d, ren: %d \n", cst, cen, rst, ren );
-		if (!(rst >= cst && ren <= cen)) continue;
-
-		int bytes_to_read = size < cur->size ? size : cur->size;
-		memcpy(buf, cur->buf + (rst - cst), bytes_to_read);
-		return bytes_to_read;
-	}
-	printf("\nchecking ended...\n");
-	return -1;
 }
 
 void remove_cache_entry(Cnode* ent) {
@@ -127,13 +94,61 @@ void insert_cache_entry(Cnode* ent) {
 	cache_size += ent->size;
 }
 
+void update_cache_by_write(const char* path, const char* buf, int size, int offset) {
+
+	Cnode* next_node;
+	for (Cnode* cur = tail->prev; cur != head; cur = next_node) {
+		next_node = cur->prev;
+		if (strcmp(cur->path, path)) continue;
+		int cst = cur->offset;
+		int cen = cur->offset + cur->pseudo_size - 1;
+		int wst = offset;
+		int wen = offset + size - 1;
+		if (wst > cen || cst > wen) continue;
+
+		wst = wst > cst ? wst : cst;
+		wen = wen < cen ? wen : cen;
+		memcpy(cur->buf + (wst - cur->offset), buf, wen - wst + 1);
+		cur->size = cur->size > wen+1? cur->size : wen+1;
+	}
+
+}
+
+
+int check_cache_for_read(const char* path, const char* buf_, int size, int offset) {
+	char* buf;
+	memcpy(&buf, &buf_, sizeof(char*));
+
+	printf("\n\nCHECKING CACHE FOR READ, path: %s\n", path);
+
+
+	for (Cnode* cur = head->next; cur != tail; cur = cur->next) {
+		// printf("comparing path to: %s\n", cur->path);
+		if (strcmp(cur->path, path)) continue;
+		int cst = cur->offset;
+		int cen = cur->offset + cur->pseudo_size - 1;
+		int rst = offset;
+		int ren = offset + size - 1;
+		// printf("after cst: %d, cen: %d, rst: %d, ren: %d \n", cst, cen, rst, ren );
+		if (!(rst >= cst && ren <= cen)) continue;
+
+		int bytes_to_read = size < cur->size ? size : cur->size;
+		memcpy(buf, cur->buf + (rst - cst), bytes_to_read);
+
+		return bytes_to_read;
+	}
+
+	return -1;
+}
+
+
 void add_new_cache_entry(const char* path, char* buf, int size, int offset, int pseudo_size) {
 	while (cache_size + size > cache_capacity) {
 		remove_cache_entry(head->next);
 	}
 
 	buf[size] = '\0';
-	printf("gonna add new cnode, path: %s, content: %s size, offset: %d %d\n", path, buf, size, offset);
+	// printf("gonna add new cnode, path: %s, content: %s size, offset: %d %d\n", path, buf, size, offset);
 
 	Cnode* ent = malloc(sizeof(Cnode));
 	ent->size = size;
@@ -145,15 +160,14 @@ void add_new_cache_entry(const char* path, char* buf, int size, int offset, int 
 	memcpy(ent->buf, buf, size);
 
 	insert_cache_entry(ent);
-	printf("\n\nchecking after insert\n");
-	printf("from head path: %s\n", head->next->path);
-	printf("from tail path: %s\n\n", tail->prev->path);
+	// printf("\n\nchecking after insert\n");
+	// printf("from head path: %s\n", head->next->path);
+	// printf("from tail path: %s\n\n", tail->prev->path);
 
 }
 
 
 void fill_cache_capacity(char* sz) {
-	printf("cache: %s\n", sz);
 	int len = strlen(sz);
 	int koe;
 	if (sz[len-1] == 'K') koe = 1024; else
@@ -162,7 +176,7 @@ void fill_cache_capacity(char* sz) {
 	sz[len-1] = sz[len];
 	cache_capacity = atoi(sz);
 	cache_capacity *= koe;
-	printf("koe: %d, cache_capacity: %d\n", koe, cache_capacity);
+	// printf("koe: %d, cache_capacity: %d\n", koe, cache_capacity);
 
 }
 
@@ -628,6 +642,7 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 	if (sysdepth++ == 0) sem_wait(&syscall_lock);
 	printf("called READ(%d), path: %s\n", (int)size, path);
 
+	print_cache_status();
 	int cached_read = check_cache_for_read(path, buf, (int)size, (int)offset);
 	if (cached_read != -1) {
 		if (--sysdepth == 0) sem_post(&syscall_lock);
@@ -661,7 +676,7 @@ static int cx_read(const char *path, char *buf, size_t size, off_t offset,
 	free(buffs[1]);
 
 	if (resp[first_alive].size <= cache_capacity) {
-		printf("------------------------ ADDING NEW CACHE ENTRY\n");
+		// printf("------------------------ ADDING NEW CACHE ENTRY\n");
 		add_new_cache_entry(path, buf, resp[first_alive].size, (int)offset, size);
 	}
 
@@ -977,7 +992,7 @@ int main(int argc, char *argv[])
 	set_up_cache();
 	get_server_connections();
 	sem_init(&syscall_lock, 0, 1);
-	// start_health_checker();
+	start_health_checker();
 
 	//pure magic here :V
 	argv[2] = NULL;
@@ -986,5 +1001,8 @@ int main(int argc, char *argv[])
 	argv[2] = malloc(3);
 	strcpy(argv[2], "-f");
 	argv[3] = NULL;
+	// argv[2] = NULL;
+	// argv[1] = argv[0];
+	// argv[0] = path_to_fuse_R1;
 	return fuse_main(3, argv, &cx_oper, NULL);
 }

@@ -37,13 +37,13 @@ struct task_R1 {
 };
 
 struct server_response_R1 {
-  char comment[30];
+  char comment[32];
   int ret_val;
   struct stat stbuf;
-  char buf[8192];
+  char buf[MAX_BUF];
   int files_in_dir;
-  char file_names[64][128];
-  struct stat stats[32];
+  char file_names[MAX_FILES][MAX_PATH];
+  struct stat stats[MAX_FILES];
   unsigned char old_hash[16];
   unsigned char cur_hash[16];
   int hashes_match;
