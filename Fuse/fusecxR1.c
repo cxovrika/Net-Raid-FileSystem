@@ -794,35 +794,6 @@ int cx_opendir(const char* path, struct fuse_file_info *fi){
 }
 
 
-
-
-static struct fuse_operations cx_oper = {
-	.opendir = cx_opendir,
-	.releasedir = cx_releasedir,
-	.getattr	= cx_getattr,
-	.access		= cx_access,
-	.readlink	= cx_readlink,
-	.readdir	= cx_readdir,
-	.mknod		= cx_mknod,
-	.mkdir		= cx_mkdir,
-	// .symlink	= cx_symlink,
-	.unlink		= cx_unlink,
-	.rmdir		= cx_rmdir,
-	.rename		= cx_rename,
-	// .link		= cx_link,
-	.chmod		= cx_chmod,
-	// .chown		= cx_chown,
-	.truncate	= cx_truncate,
-	.utimens	= cx_utimens,
-	.open		= cx_open,
-	.read		= cx_read,
-	.write		= cx_write,
-	// .statfs		= cx_statfs,
-	.release	= cx_release,
-	// .fsync		= cx_fsync,
-	// .lock	= cx_lock,
-};
-
 void parse_server_data(int argc, char *argv[]) {
 	server_count = (argc-7)/2;
 
@@ -982,6 +953,40 @@ void start_health_checker() {
 	pthread_create(&thread_id, NULL, health_check, NULL);
 }
 
+
+static void* cx_init(struct fuse_conn_info *conn){
+	start_health_checker();
+	return NULL;
+}
+
+static struct fuse_operations cx_oper = {
+	.init = cx_init,
+	.opendir = cx_opendir,
+	.releasedir = cx_releasedir,
+	.getattr	= cx_getattr,
+	.access		= cx_access,
+	.readlink	= cx_readlink,
+	.readdir	= cx_readdir,
+	.mknod		= cx_mknod,
+	.mkdir		= cx_mkdir,
+	// .symlink	= cx_symlink,
+	.unlink		= cx_unlink,
+	.rmdir		= cx_rmdir,
+	.rename		= cx_rename,
+	// .link		= cx_link,
+	.chmod		= cx_chmod,
+	// .chown		= cx_chown,
+	.truncate	= cx_truncate,
+	.utimens	= cx_utimens,
+	.open		= cx_open,
+	.read		= cx_read,
+	.write		= cx_write,
+	// .statfs		= cx_statfs,
+	.release	= cx_release,
+	// .fsync		= cx_fsync,
+	// .lock	= cx_lock,
+};
+
 int main(int argc, char *argv[])
 {
 	parse_server_data(argc, argv);
@@ -992,17 +997,17 @@ int main(int argc, char *argv[])
 	set_up_cache();
 	get_server_connections();
 	sem_init(&syscall_lock, 0, 1);
-	start_health_checker();
+
 
 	//pure magic here :V
-	argv[2] = NULL;
-	argv[1] = argv[0];
-	argv[0] = path_to_fuse_R1;
-	argv[2] = malloc(3);
-	strcpy(argv[2], "-f");
-	argv[3] = NULL;
 	// argv[2] = NULL;
 	// argv[1] = argv[0];
 	// argv[0] = path_to_fuse_R1;
-	return fuse_main(3, argv, &cx_oper, NULL);
+	// argv[2] = malloc(3);
+	// strcpy(argv[2], "-f");
+	// argv[3] = NULL;
+	argv[2] = NULL;
+	argv[1] = argv[0];
+	argv[0] = path_to_fuse_R1;
+	return fuse_main(2, argv, &cx_oper, NULL);
 }
